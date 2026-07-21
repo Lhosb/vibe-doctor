@@ -3,12 +3,15 @@ require "rails_helper"
 RSpec.describe ItunesPreviewMatcher do
   subject(:matcher) { described_class.new }
 
+  # Real iTunes API responses are served as text/javascript, not application/json.
+  ITUNES_CONTENT_TYPE = "text/javascript; charset=utf-8"
+
   def stub_search(term, country: nil, results:)
     params = { term: term, media: "music", entity: "album", limit: "5" }
     params[:country] = country if country
     stub_request(:get, "https://itunes.apple.com/search")
       .with(query: params)
-      .to_return(status: 200, headers: { "Content-Type" => "application/json" }, body: { results: results }.to_json)
+      .to_return(status: 200, headers: { "Content-Type" => ITUNES_CONTENT_TYPE }, body: { results: results }.to_json)
   end
 
   def stub_lookup(collection_id, country: nil, results:)
@@ -16,7 +19,7 @@ RSpec.describe ItunesPreviewMatcher do
     params[:country] = country if country
     stub_request(:get, "https://itunes.apple.com/lookup")
       .with(query: params)
-      .to_return(status: 200, headers: { "Content-Type" => "application/json" }, body: { results: results }.to_json)
+      .to_return(status: 200, headers: { "Content-Type" => ITUNES_CONTENT_TYPE }, body: { results: results }.to_json)
   end
 
   it "returns preview URLs sorted by track number, capped at max_tracks, sharing one confidence" do

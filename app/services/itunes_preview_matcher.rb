@@ -11,7 +11,7 @@ class ItunesPreviewMatcher
 
   def initialize
     @connection = Faraday.new do |faraday|
-      faraday.response :json, content_type: /\bjson$/
+      faraday.response :json, content_type: /\b(json|javascript)\b/
       faraday.adapter Faraday.default_adapter
     end
   end
