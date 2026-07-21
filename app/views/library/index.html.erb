@@ -1,4 +1,14 @@
 <h1 class="text-2xl font-bold">Library</h1>
 <p>Signed in as <%= Current.user.email_address %></p>
 
+<% if Current.user.discogs_username.blank? %>
+  <%= link_to "Connect Discogs", new_discogs_connection_path, class: "text-blue-600 underline" %>
+<% else %>
+  <ul>
+    <% @collection_items.each do |item| %>
+      <li><%= item.album.title %> &mdash; <%= item.album.artists.join(", ") %></li>
+    <% end %>
+  </ul>
+<% end %>
+
 <%= button_to "Log out", session_path, method: :delete %>
