@@ -38,8 +38,8 @@ class ItunesPreviewMatcher
     end
 
     tracks = tracks_with_previews(default_candidate["collectionId"], country: nil)
-    tracks = tracks_with_previews(default_candidate["collectionId"], country: STOREFRONT_FALLBACK) if tracks.empty?
-    return build_matches(tracks, default_confidence, max_tracks) if tracks.any?
+    tracks = tracks_with_previews(default_candidate["collectionId"], country: STOREFRONT_FALLBACK) unless any_previews?(tracks)
+    return build_matches(tracks, default_confidence, max_tracks) if any_previews?(tracks)
 
     jp_candidate, jp_confidence = best_candidate(term, title, artists, country: STOREFRONT_FALLBACK)
     return [] if jp_candidate.nil?
@@ -69,6 +69,10 @@ class ItunesPreviewMatcher
   rescue Error => e
     Rails.logger.warn("iTunes search failed for '#{term}' (country=#{country}): #{e.message}")
     []
+  end
+
+  def any_previews?(tracks)
+    tracks.any? { |track| track["previewUrl"].present? }
   end
 
   def tracks_with_previews(collection_id, country:)

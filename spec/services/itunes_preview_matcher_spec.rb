@@ -77,6 +77,44 @@ RSpec.describe ItunesPreviewMatcher do
     expect(matches.map(&:preview_url)).to eq(["https://example.com/jp.m4a"])
   end
 
+  it "falls back to the JP storefront when the default-storefront tracks have no preview URLs" do
+    stub_search("Miles Davis Kind of Blue", results: [
+      { "collectionId" => 1, "collectionName" => "Kind of Blue", "artistName" => "Miles Davis" }
+    ])
+    stub_lookup(1, results: [
+      { "wrapperType" => "track", "trackNumber" => 1, "previewUrl" => nil }
+    ])
+    stub_lookup(1, country: "JP", results: [
+      { "wrapperType" => "track", "trackNumber" => 1, "previewUrl" => "https://example.com/jp.m4a" }
+    ])
+
+    matches = matcher.find_previews(title: "Kind of Blue", artists: ["Miles Davis"], max_tracks: 5)
+
+    expect(matches.map(&:preview_url)).to eq(["https://example.com/jp.m4a"])
+  end
+
+  it "falls back to a JP-storefront candidate when the default candidate has no preview URLs in either storefront" do
+    stub_search("Miles Davis Kind of Blue", results: [
+      { "collectionId" => 1, "collectionName" => "Kind of Blue", "artistName" => "Miles Davis" }
+    ])
+    stub_lookup(1, results: [
+      { "wrapperType" => "track", "trackNumber" => 1, "previewUrl" => nil }
+    ])
+    stub_lookup(1, country: "JP", results: [
+      { "wrapperType" => "track", "trackNumber" => 1, "previewUrl" => nil }
+    ])
+    stub_search("Miles Davis Kind of Blue", country: "JP", results: [
+      { "collectionId" => 2, "collectionName" => "Kind of Blue", "artistName" => "Miles Davis" }
+    ])
+    stub_lookup(2, country: "JP", results: [
+      { "wrapperType" => "track", "trackNumber" => 1, "previewUrl" => "https://example.com/jp2.m4a" }
+    ])
+
+    matches = matcher.find_previews(title: "Kind of Blue", artists: ["Miles Davis"], max_tracks: 5)
+
+    expect(matches.map(&:preview_url)).to eq(["https://example.com/jp2.m4a"])
+  end
+
   it "falls back to a JP-storefront search when the default-storefront search is empty" do
     stub_search("Miles Davis Kind of Blue", results: [])
     stub_search("Miles Davis Kind of Blue", country: "JP", results: [
