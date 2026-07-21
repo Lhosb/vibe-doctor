@@ -22,4 +22,18 @@ RSpec.describe User, type: :model do
     user = create(:user, password: "s3cret-pass")
     expect(User.authenticate_by(email_address: user.email_address, password: "s3cret-pass")).to eq(user)
   end
+
+  it "encrypts the discogs_token at rest" do
+    user = create(:user, discogs_token: "plaintext-token-123")
+    expect(user.discogs_token).to eq("plaintext-token-123")
+
+    raw_value = ActiveRecord::Base.connection.select_value(
+      "SELECT discogs_token FROM users WHERE id = #{user.id}"
+    )
+    expect(raw_value).not_to eq("plaintext-token-123")
+  end
+
+  it "defaults admin to false" do
+    expect(create(:user).admin).to eq(false)
+  end
 end
