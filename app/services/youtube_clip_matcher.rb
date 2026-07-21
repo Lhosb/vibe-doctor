@@ -2,6 +2,7 @@ require "open3"
 require "securerandom"
 require "tmpdir"
 require "json"
+require "tempfile"
 
 class YoutubeClipMatcher
   CLIP_START_SECONDS = 60
@@ -49,20 +50,28 @@ class YoutubeClipMatcher
   end
 
   def download_clip(video_id)
-    dest_dir = Dir.mktmpdir("vibe_doctor_yt_")
-    dest_template = File.join(dest_dir, "#{SecureRandom.hex}.%(ext)s")
+    Dir.mktmpdir("vibe_doctor_yt_") do |dest_dir|
+      dest_template = File.join(dest_dir, "#{SecureRandom.hex}.%(ext)s")
 
-    _stdout, _stderr, status = Open3.capture3(
-      @yt_dlp_executable, "https://www.youtube.com/watch?v=#{video_id}",
-      "--format", "bestaudio/best",
-      "--download-sections", "*#{CLIP_START_SECONDS}-#{CLIP_START_SECONDS + CLIP_DURATION_SECONDS}",
-      "--force-keyframes-at-cuts",
-      "--output", dest_template,
-      "--quiet", "--no-warnings",
-      "--socket-timeout", SOCKET_TIMEOUT_SECONDS.to_s
-    )
-    return nil unless status.success?
+      _stdout, _stderr, status = Open3.capture3(
+        @yt_dlp_executable, "https://www.youtube.com/watch?v=#{video_id}",
+        "--format", "bestaudio/best",
+        "--download-sections", "*#{CLIP_START_SECONDS}-#{CLIP_START_SECONDS + CLIP_DURATION_SECONDS}",
+        "--force-keyframes-at-cuts",
+        "--output", dest_template,
+        "--quiet", "--no-warnings",
+        "--socket-timeout", SOCKET_TIMEOUT_SECONDS.to_s
+      )
+      return nil unless status.success?
 
-    Dir.glob(File.join(dest_dir, "*")).first
+      clip_path = Dir.glob(File.join(dest_dir, "*")).first
+      clip_path && persist_clip(clip_path)
+    end
+  end
+
+  def persist_clip(source_path)
+    destination = File.join(Dir.tmpdir, "vibe_doctor_yt_#{SecureRandom.hex}#{File.extname(source_path)}")
+    File.binwrite(destination, File.binread(source_path))
+    destination
   end
 end
