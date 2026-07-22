@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_21_214603) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_22_154648) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -65,7 +65,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_214603) do
     t.datetime "updated_at", null: false
     t.float "valence", default: 0.5, null: false
     t.index ["album_id"], name: "index_mood_vectors_on_album_id", unique: true
-    t.check_constraint "mood_source::text = ANY (ARRAY['essentia_itunes'::character varying::text, 'essentia_youtube'::character varying::text, 'llm_only'::character varying::text])", name: "mood_vectors_mood_source_check"
+    t.check_constraint "mood_source::text = ANY (ARRAY['essentia_itunes'::character varying, 'essentia_youtube'::character varying, 'llm_only'::character varying]::text[])", name: "mood_vectors_mood_source_check"
+  end
+
+  create_table "query_understanding_caches", force: :cascade do |t|
+    t.float "arousal", null: false
+    t.datetime "created_at", null: false
+    t.float "danceability", null: false
+    t.vector "embedding", limit: 1536, null: false
+    t.datetime "expires_at", null: false
+    t.string "genre"
+    t.jsonb "keywords", default: [], null: false
+    t.float "mood_acoustic", null: false
+    t.float "mood_happy", null: false
+    t.float "mood_relaxed", null: false
+    t.string "query_digest", null: false
+    t.text "query_text", null: false
+    t.datetime "updated_at", null: false
+    t.float "valence", null: false
+    t.index ["query_digest"], name: "index_query_understanding_caches_on_query_digest", unique: true
   end
 
   create_table "sessions", force: :cascade do |t|
