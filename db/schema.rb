@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_22_155433) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_22_160247) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -108,6 +108,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_155433) do
     t.index ["query_digest"], name: "index_query_understanding_caches_on_query_digest", unique: true
   end
 
+  create_table "recommendation_events", force: :cascade do |t|
+    t.bigint "album_id", null: false
+    t.jsonb "blended_scores", default: {}, null: false
+    t.integer "candidates_considered", null: false
+    t.datetime "created_at", null: false
+    t.text "explanation"
+    t.float "final_score", null: false
+    t.text "query_text", null: false
+    t.jsonb "rerank_scores", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["album_id"], name: "index_recommendation_events_on_album_id"
+    t.index ["user_id"], name: "index_recommendation_events_on_user_id"
+  end
+
   create_table "sessions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "ip_address"
@@ -164,6 +179,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_155433) do
   add_foreign_key "collection_items", "users"
   add_foreign_key "embeddings", "albums"
   add_foreign_key "mood_vectors", "albums"
+  add_foreign_key "recommendation_events", "albums"
+  add_foreign_key "recommendation_events", "users"
   add_foreign_key "sessions", "users"
   add_foreign_key "vibe_cards", "albums"
   add_foreign_key "vibe_overrides", "albums"
