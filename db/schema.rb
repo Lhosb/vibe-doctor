@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_22_155253) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_22_155433) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -39,6 +39,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_155253) do
     t.datetime "updated_at", null: false
     t.integer "year"
     t.index ["master_id"], name: "index_albums_on_master_id", unique: true
+  end
+
+  create_table "artist_cooldowns", force: :cascade do |t|
+    t.string "artist_name", null: false
+    t.datetime "created_at", null: false
+    t.datetime "last_recommended_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "artist_name"], name: "index_artist_cooldowns_on_user_id_and_artist_name", unique: true
+    t.index ["user_id"], name: "index_artist_cooldowns_on_user_id"
   end
 
   create_table "collection_items", force: :cascade do |t|
@@ -149,6 +159,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_155253) do
 
   add_foreign_key "album_affinities", "albums"
   add_foreign_key "album_affinities", "users"
+  add_foreign_key "artist_cooldowns", "users"
   add_foreign_key "collection_items", "albums"
   add_foreign_key "collection_items", "users"
   add_foreign_key "embeddings", "albums"
