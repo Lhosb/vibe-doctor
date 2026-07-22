@@ -5,6 +5,7 @@ Rails.application.routes.draw do
   resource :session
   resources :passwords, param: :token
   get "/feedback", to: "feedback#index"
+  post "/feedback", to: "feedback#create"
   post "/recommend", to: "recommendations#create"
   post "/recommend/feedback", to: "recommendations#feedback"
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
