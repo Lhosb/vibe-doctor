@@ -1,0 +1,6 @@
+<%# app/views/feedback/create.turbo_stream.erb %>
+<%= turbo_stream.replace "feedback_card" do %>
+  <turbo-frame id="feedback_card">
+    <%= render "feedback/card", event: @event %>
+  </turbo-frame>
+<% end %>

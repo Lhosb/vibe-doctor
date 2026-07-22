@@ -1,0 +1,10 @@
+<h1>Recommendation stats for <%= @record.title %></h1>
+
+<ul>
+  <li>Total recommended: <%= @stats[:total_recommended] %></li>
+  <li>Good: <%= @stats[:good_count] %></li>
+  <li>Bad: <%= @stats[:bad_count] %></li>
+  <li>Skip: <%= @stats[:skip_count] %></li>
+  <li>Pending: <%= @stats[:pending_count] %></li>
+  <li>Average final score: <%= @stats[:average_final_score] %></li>
+</ul>

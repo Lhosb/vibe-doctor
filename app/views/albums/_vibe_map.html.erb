@@ -1,0 +1,14 @@
+<div
+  data-controller="vibe-map"
+  data-vibe-map-album-id-value="<%= album.id %>"
+  data-vibe-map-genre-value="<%= album.genres.first %>"
+  data-action="click->vibe-map#place"
+  class="vibe-map"
+  style="position: relative; width: 300px; height: 300px; border: 1px solid #ccc;"
+>
+  <div
+    class="vibe-map__marker"
+    data-vibe-map-target="marker"
+    style="position: absolute; transform: translate(-50%, -50%); width: 8px; height: 8px; border-radius: 9999px; background: #111;"
+  ></div>
+</div>

@@ -64,9 +64,14 @@ end
 group :test do
   gem "capybara"
   gem "webmock"
+  # Drives headless Chrome for js: true system specs (Turbo Stream/fetch-driven flows
+  # that rack_test cannot execute).
+  gem "selenium-webdriver", "~> 4.11"
 end
 
 group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
 end
+
+gem "madmin", "~> 2.3"

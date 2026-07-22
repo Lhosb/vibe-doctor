@@ -26,7 +26,7 @@ WebMock.disable_net_connect!(allow_localhost: true)
 # directory. Alternatively, in the individual `*_spec.rb` files, manually
 # require only the support files necessary.
 #
-# Rails.root.glob('spec/support/**/*.rb').sort_by(&:to_s).each { |f| require f }
+Rails.root.glob('spec/support/**/*.rb').sort_by(&:to_s).each { |f| require f }
 
 # Ensures that the test database schema matches the current schema file.
 # If there are pending migrations it will invoke `db:test:prepare` to
@@ -73,6 +73,12 @@ RSpec.configure do |config|
 
   config.before(:each, type: :system) do
     driven_by :rack_test
+  end
+
+  # js: true system specs exercise real browser behavior (fetch, Turbo Streams,
+  # Stimulus) that the default rack_test driver cannot execute.
+  config.before(:each, type: :system, js: true) do
+    driven_by :selenium, using: :headless_chrome, screen_size: [ 1400, 1400 ]
   end
 
   # Filter lines from Rails gems in backtraces.

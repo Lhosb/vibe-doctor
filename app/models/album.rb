@@ -1,18 +1,22 @@
 class Album < ApplicationRecord
   class InvalidTransition < StandardError; end
+  class InvalidYoutubeLinkError < StandardError; end
+
+  YOUTUBE_URL_PATTERN = %r{\Ahttps://(www\.)?(youtube\.com|youtu\.be)/}
 
   ENRICHMENT_TRANSITIONS = {
     "pending" => %w[matching_audio failed],
     "matching_audio" => %w[extracting_features failed],
     "extracting_features" => %w[grounded failed],
     "grounded" => [],
-    "failed" => []
+    "failed" => %w[grounded]
   }.freeze
 
   has_one :mood_vector, dependent: :destroy
   has_one :vibe_card, dependent: :destroy
   has_one :embedding, dependent: :destroy
   has_many :collection_items, dependent: :destroy
+  has_many :recommendation_events, dependent: :destroy
   has_many :vibe_overrides, dependent: :destroy
 
   enum :enrichment_status, ENRICHMENT_TRANSITIONS.keys.index_by(&:itself), default: "pending", validate: true
@@ -34,6 +38,25 @@ class Album < ApplicationRecord
 
   def fail_enrichment!
     transition_to!("failed")
+  end
+
+  def repair_youtube_link!(url)
+    raise InvalidYoutubeLinkError, "url must be a youtube.com or youtu.be link" unless url.match?(YOUTUBE_URL_PATTERN)
+
+    update!(youtube_url: url)
+    transition_to!("grounded")
+  end
+
+  def recommendation_stats
+    events = recommendation_events
+    {
+      total_recommended: events.count,
+      good_count: events.good.count,
+      bad_count: events.bad.count,
+      skip_count: events.skip.count,
+      pending_count: events.pending.count,
+      average_final_score: events.average(:final_score)&.to_f&.round(3)
+    }
   end
 
   private

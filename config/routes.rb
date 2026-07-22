@@ -1,9 +1,17 @@
 Rails.application.routes.draw do
+  draw :madmin
   root "library#index"
   get "library" => "library#index", as: :library
   resource :discogs_connection, only: %i[new create]
   resource :session
   resources :passwords, param: :token
+  get "/feedback", to: "feedback#index"
+  post "/feedback", to: "feedback#create"
+  post "/recommend", to: "recommendations#create"
+  post "/recommend/feedback", to: "recommendations#feedback"
+  resources :albums, only: [:show] do
+    resource :vibe_override, only: [:create], controller: "vibe_overrides"
+  end
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.

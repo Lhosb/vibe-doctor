@@ -1,0 +1,15 @@
+<% if event.nil? %>
+  <div class="feedback-card feedback-card--empty">You're all caught up!</div>
+<% else %>
+  <div class="feedback-card" data-controller="feedback" data-feedback-event-id-value="<%= event.id %>">
+    <h2><%= event.album.title %></h2>
+    <p><%= event.album.artists.join(", ") %></p>
+    <p><%= event.explanation %></p>
+
+    <div class="feedback-card__actions">
+      <button type="button" data-action="feedback#choose" data-feedback-outcome-param="good">Good</button>
+      <button type="button" data-action="feedback#choose" data-feedback-outcome-param="bad">Bad</button>
+      <button type="button" data-action="feedback#choose" data-feedback-outcome-param="skip">Skip</button>
+    </div>
+  </div>
+<% end %>
