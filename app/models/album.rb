@@ -16,6 +16,7 @@ class Album < ApplicationRecord
   has_one :vibe_card, dependent: :destroy
   has_one :embedding, dependent: :destroy
   has_many :collection_items, dependent: :destroy
+  has_many :recommendation_events, dependent: :destroy
   has_many :vibe_overrides, dependent: :destroy
 
   enum :enrichment_status, ENRICHMENT_TRANSITIONS.keys.index_by(&:itself), default: "pending", validate: true
@@ -44,6 +45,18 @@ class Album < ApplicationRecord
 
     update!(youtube_url: url)
     transition_to!("grounded")
+  end
+
+  def recommendation_stats
+    events = recommendation_events
+    {
+      total_recommended: events.count,
+      good_count: events.good.count,
+      bad_count: events.bad.count,
+      skip_count: events.skip.count,
+      pending_count: events.pending.count,
+      average_final_score: events.average(:final_score)&.to_f&.round(3)
+    }
   end
 
   private

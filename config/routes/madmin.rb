@@ -12,6 +12,7 @@ namespace :madmin, path: "admin" do
   resources :collection_items
   resources :albums do
     post :repair_youtube_link, on: :member
+    get :recommendation_stats, on: :member
   end
   resources :album_affinities
   root to: "dashboard#show"

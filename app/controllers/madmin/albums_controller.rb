@@ -6,5 +6,10 @@ module Madmin
     rescue Album::InvalidYoutubeLinkError, Album::InvalidTransition => e
       redirect_to resource.show_path(@record), alert: e.message
     end
+
+    def recommendation_stats
+      @stats = @record.recommendation_stats
+      render "madmin/albums/recommendation_stats"
+    end
   end
 end

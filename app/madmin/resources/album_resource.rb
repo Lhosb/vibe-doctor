@@ -31,6 +31,13 @@ class AlbumResource < Madmin::Resource
       class: "btn btn-secondary"
   end
 
+  member_action do |record|
+    button_to "Recommendation Stats",
+      recommendation_stats_madmin_album_path(record),
+      method: :get,
+      class: "btn btn-secondary"
+  end
+
   # Customize the display name of records in the admin area.
   # def self.display_name(record) = record.name
 
