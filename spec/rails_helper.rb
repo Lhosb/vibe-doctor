@@ -75,6 +75,12 @@ RSpec.configure do |config|
     driven_by :rack_test
   end
 
+  # js: true system specs exercise real browser behavior (fetch, Turbo Streams,
+  # Stimulus) that the default rack_test driver cannot execute.
+  config.before(:each, type: :system, js: true) do
+    driven_by :selenium, using: :headless_chrome, screen_size: [ 1400, 1400 ]
+  end
+
   # Filter lines from Rails gems in backtraces.
   config.filter_rails_from_backtrace!
   # arbitrary gems may also be filtered via:
