@@ -24,12 +24,25 @@ RSpec.describe RecommendationPipeline do
     )
   end
 
-  it "returns the chosen album, persists an event, and records artist cooldown" do
+  it "returns the chosen album, persists a linked event with the pipeline's scores, and records artist cooldown" do
     result = described_class.new(user: user, query_text: "warm sunday jazz").call
 
     expect(result.album).to eq(album)
     expect(result.explanation).to eq("warm and mellow")
     expect(result.recommendation_event).to be_persisted
+
+    event = result.recommendation_event
+    expect(event.album).to eq(album)
+    expect(event.user).to eq(user)
+    expect(event).to have_attributes(
+      query_text: "warm sunday jazz",
+      candidates_considered: 1,
+      explanation: "warm and mellow"
+    )
+    expect(event.blended_scores).to eq(album.id.to_s => 0.2)
+    expect(event.rerank_scores).to eq(album.id.to_s => 0.9)
+    expect(event.final_score).to be_within(0.0001).of(1.0 / 1.2)
+
     expect(ArtistCooldown.penalty_for(user: user, artist_name: "Artist A")).to be > 0.0
   end
 

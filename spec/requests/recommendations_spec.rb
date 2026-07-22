@@ -59,8 +59,19 @@ RSpec.describe "POST /recommend", type: :request do
     body = response.parsed_body
     expect(body.keys).to contain_exactly("recommendation_event_id", "album", "explanation")
     expect(body["recommendation_event_id"]).to be_a(Integer)
-    expect(body["album"].keys).to contain_exactly("id", "title", "artists", "genres")
+    expect(body["album"]).to eq(
+      "id" => album.id, "title" => album.title, "artists" => album.artists, "genres" => album.genres
+    )
     expect(body["explanation"]).to eq("warm and mellow")
+
+    event = RecommendationEvent.find(body["recommendation_event_id"])
+    expect(event.album_id).to eq(album.id)
+    expect(event.user).to eq(user)
+    expect(event).to have_attributes(
+      query_text: "warm sunday jazz",
+      candidates_considered: 1,
+      explanation: "warm and mellow"
+    )
   end
 
   it "returns 422 when no albums are admitted" do
