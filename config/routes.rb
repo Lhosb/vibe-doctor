@@ -4,6 +4,7 @@ Rails.application.routes.draw do
   resource :discogs_connection, only: %i[new create]
   resource :session
   resources :passwords, param: :token
+  get "/feedback", to: "feedback#index"
   post "/recommend", to: "recommendations#create"
   post "/recommend/feedback", to: "recommendations#feedback"
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
