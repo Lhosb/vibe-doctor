@@ -53,7 +53,7 @@ class VibeCardGenerator
   private
 
   def default_client
-    OpenAI::Client.new(access_token: ENV.fetch("OPENAI_API_KEY"))
+    OpenAI::Client.new(api_key: ENV.fetch("OPENAI_API_KEY"))
   end
 
   def album_description(album)
