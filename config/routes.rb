@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  draw :madmin
   root "library#index"
   get "library" => "library#index", as: :library
   resource :discogs_connection, only: %i[new create]
