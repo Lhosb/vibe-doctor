@@ -21,3 +21,27 @@ RSpec.describe "GET /feedback", type: :request do
     expect(response.body).to include("You're all caught up!")
   end
 end
+
+RSpec.describe "POST /feedback", type: :request do
+  let(:user) { create(:user) }
+  let(:event) { create(:recommendation_event, user: user, outcome: "pending") }
+
+  before { sign_in_as(user) }
+
+  it "updates the current user's pending event outcome" do
+    post "/feedback", params: { recommendation_event_id: event.id, outcome: "good" }
+
+    expect(response).to have_http_status(:found)
+    expect(event.reload.outcome).to eq("good")
+  end
+
+  it "returns not found for another user's event id" do
+    other_user = create(:user)
+    other_event = create(:recommendation_event, user: other_user, outcome: "pending")
+
+    post "/feedback", params: { recommendation_event_id: other_event.id, outcome: "good" }
+
+    expect(response).to have_http_status(:not_found)
+    expect(other_event.reload.outcome).to eq("pending")
+  end
+end
