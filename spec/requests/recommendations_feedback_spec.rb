@@ -40,4 +40,22 @@ RSpec.describe "POST /recommend/feedback", type: :request do
     post "/recommend/feedback", params: { recommendation_event_id: event.id }
     expect(response).to have_http_status(:bad_request)
   end
+
+  it "does not let another user mutate someone else's recommendation event (IDOR)" do
+    owning_users_event = event
+    other_user = create(:user, password: "s3cret-pass")
+
+    # Sign out the owning user and sign in as a different user.
+    delete session_path
+    post session_path, params: { email_address: other_user.email_address, password: "s3cret-pass" }
+
+    post "/recommend/feedback", params: { recommendation_event_id: owning_users_event.id, outcome: "good" }
+
+    expect(response).to have_http_status(:not_found)
+    expect(response.parsed_body).to eq("error" => "recommendation event not found")
+
+    owning_users_event.reload
+    expect(owning_users_event.outcome).to eq("pending")
+    expect(AlbumAffinity.find_by(user: user, album: album)).to be_nil
+  end
 end

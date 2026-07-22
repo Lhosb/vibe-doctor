@@ -3,6 +3,7 @@ class User < ApplicationRecord
   has_many :sessions, dependent: :destroy
   has_many :collection_items, dependent: :destroy
   has_many :vibe_overrides, dependent: :destroy
+  has_many :recommendation_events, dependent: :destroy
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
 

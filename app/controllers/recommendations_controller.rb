@@ -23,7 +23,7 @@ class RecommendationsController < ApplicationController
   end
 
   def feedback
-    event = RecommendationEvent.find(params.require(:recommendation_event_id))
+    event = current_user.recommendation_events.find(params.require(:recommendation_event_id))
     event.apply_outcome!(params.require(:outcome))
 
     render json: {
