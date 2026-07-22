@@ -77,4 +77,11 @@ RSpec.describe SyncDiscogsCollectionJob, type: :job do
     expect(CollectionItem.where(user: user).count).to eq(2)
     expect(Album.count).to eq(2)
   end
+
+  it "enqueues EnrichAlbumJob only for newly-created albums, not ones already known" do
+    existing_album = Album.create!(master_id: 500, title: "Album One", synthetic_master_id: false)
+
+    expect { described_class.perform_now(user) }.to have_enqueued_job(EnrichAlbumJob).with(existing_album).exactly(0).times
+    expect(EnrichAlbumJob).to have_been_enqueued.with(Album.find_by(master_id: 222)).once
+  end
 end

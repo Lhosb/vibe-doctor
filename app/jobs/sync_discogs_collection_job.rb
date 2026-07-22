@@ -23,13 +23,16 @@ class SyncDiscogsCollectionJob < ApplicationJob
     master_id = info["master_id"].presence&.nonzero?
     key = master_id || info["id"]
 
-    Album.find_or_create_by!(master_id: key) do |album|
-      album.synthetic_master_id = master_id.nil?
-      album.title = info["title"].to_s
-      album.artists = Array(info["artists"]).filter_map { |artist| artist["name"] }
-      album.year = info["year"]
-      album.genres = Array(info["genres"])
-      album.styles = Array(info["styles"])
+    album = Album.find_or_create_by!(master_id: key) do |new_album|
+      new_album.synthetic_master_id = master_id.nil?
+      new_album.title = info["title"].to_s
+      new_album.artists = Array(info["artists"]).filter_map { |artist| artist["name"] }
+      new_album.year = info["year"]
+      new_album.genres = Array(info["genres"])
+      new_album.styles = Array(info["styles"])
     end
+
+    EnrichAlbumJob.perform_later(album) if album.previously_new_record?
+    album
   end
 end

@@ -4,6 +4,8 @@ RSpec.describe "Discogs connection", type: :system do
   let(:user) { create(:user, email_address: "listener@example.com", password: "s3cret-pass") }
 
   before do
+    allow(EnrichAlbumJob).to receive(:perform_later)
+
     stub_request(:get, "https://api.discogs.com/users/listener/collection/folders/0/releases")
       .with(query: { page: "1", per_page: "100" })
       .to_return(
