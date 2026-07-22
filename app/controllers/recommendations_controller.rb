@@ -36,6 +36,6 @@ class RecommendationsController < ApplicationController
   rescue ActionController::ParameterMissing => e
     render json: { error: e.message }, status: :bad_request
   rescue RecommendationEvent::InvalidOutcomeTransitionError => e
-    render json: { error: e.message }, status: :unprocessable_entity
+    render json: { error: e.message }, status: :unprocessable_content
   end
 end

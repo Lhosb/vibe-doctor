@@ -21,14 +21,14 @@ RSpec.describe "POST /recommend/feedback", type: :request do
 
   it "returns 422 for an invalid outcome" do
     post "/recommend/feedback", params: { recommendation_event_id: event.id, outcome: "meh" }
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
   end
 
   it "returns 422 when the event is no longer pending" do
     event.apply_outcome!("good")
 
     post "/recommend/feedback", params: { recommendation_event_id: event.id, outcome: "bad" }
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
   end
 
   it "returns 404 for an unknown event" do
