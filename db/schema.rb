@@ -10,10 +10,22 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_22_154648) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_22_155253) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
+
+  create_table "album_affinities", force: :cascade do |t|
+    t.bigint "album_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "last_interacted_at"
+    t.float "score", default: 0.0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["album_id"], name: "index_album_affinities_on_album_id"
+    t.index ["user_id", "album_id"], name: "index_album_affinities_on_user_id_and_album_id", unique: true
+    t.index ["user_id"], name: "index_album_affinities_on_user_id"
+  end
 
   create_table "albums", force: :cascade do |t|
     t.string "artists", default: [], null: false, array: true
@@ -135,6 +147,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_154648) do
     t.index ["user_id"], name: "index_vibe_overrides_on_user_id"
   end
 
+  add_foreign_key "album_affinities", "albums"
+  add_foreign_key "album_affinities", "users"
   add_foreign_key "collection_items", "albums"
   add_foreign_key "collection_items", "users"
   add_foreign_key "embeddings", "albums"
