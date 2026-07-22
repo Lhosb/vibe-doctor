@@ -1,2 +1,3 @@
 <h1><%= @album.title %></h1>
 <p><%= @album.artists.join(", ") %></p>
+<%= render "albums/vibe_map", album: @album %>
