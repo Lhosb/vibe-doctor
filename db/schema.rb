@@ -115,11 +115,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_160247) do
     t.datetime "created_at", null: false
     t.text "explanation"
     t.float "final_score", null: false
+    t.string "outcome", default: "pending", null: false
     t.text "query_text", null: false
     t.jsonb "rerank_scores", default: {}, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["album_id"], name: "index_recommendation_events_on_album_id"
+    t.index ["outcome"], name: "index_recommendation_events_on_outcome"
     t.index ["user_id"], name: "index_recommendation_events_on_user_id"
   end
 

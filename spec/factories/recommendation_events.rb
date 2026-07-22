@@ -8,5 +8,6 @@ FactoryBot.define do
     rerank_scores { {} }
     final_score { 0.8 }
     explanation { "warm and mellow" }
+    outcome { "pending" }
   end
 end
