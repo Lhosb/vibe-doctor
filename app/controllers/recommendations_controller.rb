@@ -17,7 +17,7 @@ class RecommendationsController < ApplicationController
       explanation: result.explanation
     }, status: :ok
   rescue RecommendationPipeline::NoCandidatesError => e
-    render json: { error: e.message }, status: :unprocessable_entity
+    render json: { error: e.message }, status: :unprocessable_content
   rescue ActionController::ParameterMissing => e
     render json: { error: e.message }, status: :bad_request
   end
