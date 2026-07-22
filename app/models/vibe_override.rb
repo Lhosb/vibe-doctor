@@ -5,10 +5,7 @@ class VibeOverride < ApplicationRecord
     attr_reader(*VibeOverride::MOOD_HEADS)
 
     def initialize(**attrs)
-      VibeOverride::MOOD_HEADS.each do |head|
-        value = attrs.key?(head.to_sym) ? attrs.fetch(head.to_sym) : attrs.fetch(head)
-        instance_variable_set(:"@#{head}", value)
-      end
+      VibeOverride::MOOD_HEADS.each { |head| instance_variable_set(:"@#{head}", attrs.fetch(head.to_sym)) }
     end
   end
 
@@ -22,16 +19,8 @@ class VibeOverride < ApplicationRecord
 
   def self.upsert_for!(user:, album:, mood_snapshot:, genre: nil, source:)
     override = find_or_initialize_by(user: user, album: album)
-    legacy_attrs = {}
-    if column_names.include?("energy")
-      legacy_attrs[:energy] = mood_snapshot.arousal
-      legacy_attrs[:tension] = 1.0 - mood_snapshot.mood_relaxed
-      legacy_attrs[:warmth] = mood_snapshot.mood_happy
-    end
-
     override.update!(
       **MOOD_HEADS.index_with { |head| mood_snapshot.public_send(head) },
-      **legacy_attrs,
       genre: genre,
       source: source
     )
