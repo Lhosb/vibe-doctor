@@ -163,9 +163,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_160247) do
     t.float "arousal"
     t.datetime "created_at", null: false
     t.float "danceability"
+    t.string "genre"
     t.float "mood_acoustic"
     t.float "mood_happy"
     t.float "mood_relaxed"
+    t.string "source"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.float "valence"
