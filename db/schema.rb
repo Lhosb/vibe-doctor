@@ -38,6 +38,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_160247) do
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.integer "year"
+    t.string "youtube_url"
     t.index ["master_id"], name: "index_albums_on_master_id", unique: true
   end
 
@@ -87,7 +88,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_160247) do
     t.datetime "updated_at", null: false
     t.float "valence", default: 0.5, null: false
     t.index ["album_id"], name: "index_mood_vectors_on_album_id", unique: true
-    t.check_constraint "mood_source::text = ANY (ARRAY['essentia_itunes'::character varying, 'essentia_youtube'::character varying, 'llm_only'::character varying]::text[])", name: "mood_vectors_mood_source_check"
+    t.check_constraint "mood_source::text = ANY (ARRAY['essentia_itunes'::character varying::text, 'essentia_youtube'::character varying::text, 'llm_only'::character varying::text])", name: "mood_vectors_mood_source_check"
   end
 
   create_table "query_understanding_caches", force: :cascade do |t|

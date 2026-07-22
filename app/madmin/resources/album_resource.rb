@@ -11,6 +11,7 @@ class AlbumResource < Madmin::Resource
   attribute :title
   attribute :updated_at, form: false
   attribute :year
+  attribute :youtube_url
 
   # Associations
   attribute :mood_vector
@@ -22,10 +23,13 @@ class AlbumResource < Madmin::Resource
   # Add scopes to easily filter records
   # scope :published
 
-  # Add actions to the resource's show page
-  # member_action do |record|
-  #   link_to "Do Something", some_path
-  # end
+  member_action do |record|
+    button_to "Repair YouTube Link",
+      repair_youtube_link_madmin_album_path(record),
+      method: :post,
+      params: { youtube_url: record.youtube_url.presence || "https://www.youtube.com/watch?v=abc123" },
+      class: "btn btn-secondary"
+  end
 
   # Customize the display name of records in the admin area.
   # def self.display_name(record) = record.name

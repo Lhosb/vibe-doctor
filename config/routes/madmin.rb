@@ -10,7 +10,9 @@ namespace :madmin, path: "admin" do
   resources :vibe_overrides
   resources :artist_cooldowns
   resources :collection_items
-  resources :albums
+  resources :albums do
+    post :repair_youtube_link, on: :member
+  end
   resources :album_affinities
   root to: "dashboard#show"
 end

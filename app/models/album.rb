@@ -1,12 +1,15 @@
 class Album < ApplicationRecord
   class InvalidTransition < StandardError; end
+  class InvalidYoutubeLinkError < StandardError; end
+
+  YOUTUBE_URL_PATTERN = %r{\Ahttps://(www\.)?(youtube\.com|youtu\.be)/}
 
   ENRICHMENT_TRANSITIONS = {
     "pending" => %w[matching_audio failed],
     "matching_audio" => %w[extracting_features failed],
     "extracting_features" => %w[grounded failed],
     "grounded" => [],
-    "failed" => []
+    "failed" => %w[grounded]
   }.freeze
 
   has_one :mood_vector, dependent: :destroy
@@ -34,6 +37,13 @@ class Album < ApplicationRecord
 
   def fail_enrichment!
     transition_to!("failed")
+  end
+
+  def repair_youtube_link!(url)
+    raise InvalidYoutubeLinkError, "url must be a youtube.com or youtu.be link" unless url.match?(YOUTUBE_URL_PATTERN)
+
+    update!(youtube_url: url)
+    transition_to!("grounded")
   end
 
   private
