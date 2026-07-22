@@ -62,6 +62,18 @@ RSpec.describe EnrichAlbumJob, type: :job do
     expect(album).to be_grounded
   end
 
+  it "grounds albums that never match audio by moving directly into extraction before persisting the llm_only fallback" do
+    allow(mood_grounder).to receive(:ground).and_return(mood_attrs.merge(mood_source: "llm_only", match_confidence: 0.0, spread: {}))
+    allow(vibe_card_generator).to receive(:generate).and_return(nil)
+    allow(embedding_service).to receive(:embed).and_return(facet_vectors)
+
+    perform
+
+    album.reload
+    expect(album).to be_grounded
+    expect(album.mood_vector.mood_source).to eq("llm_only")
+  end
+
   it "marks the album failed and re-raises on an unexpected error" do
     allow(mood_grounder).to receive(:ground) do |_album, on_matched:|
       on_matched.call

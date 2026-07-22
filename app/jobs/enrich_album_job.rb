@@ -14,6 +14,7 @@ class EnrichAlbumJob < ApplicationJob
     end
 
     mood_attrs = mood_grounder.ground(album, on_matched: on_matched)
+    album.start_extracting! unless extraction_started
     mood_vector = album.mood_vector || album.build_mood_vector
     mood_vector.update!(mood_attrs)
 
