@@ -24,11 +24,12 @@ class AlbumResource < Madmin::Resource
   # scope :published
 
   member_action do |record|
-    button_to "Repair YouTube Link",
-      repair_youtube_link_madmin_album_path(record),
-      method: :post,
-      params: { youtube_url: record.youtube_url.presence || "https://www.youtube.com/watch?v=abc123" },
-      class: "btn btn-secondary"
+    form_with url: repair_youtube_link_madmin_album_path(record), method: :post, local: true do
+      safe_join([
+        text_field_tag(:youtube_url, record.youtube_url, placeholder: "https://www.youtube.com/watch?v=...", class: "form-input"),
+        submit_tag("Repair YouTube Link", class: "btn btn-secondary")
+      ])
+    end
   end
 
   member_action do |record|
