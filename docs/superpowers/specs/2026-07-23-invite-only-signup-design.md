@@ -15,16 +15,23 @@ token in the URL (`resources :passwords, param: :token`) and Rails' built-in
 `has_secure_password` token generation.
 
 This design introduces **invite-only signup**: an admin invites a specific email
-address from Madmin, the invitee receives an email with a signup link, and clicking
-it lets them set a password and create their account. There is no open registration
-endpoint — an account can only be created in response to an admin-issued invitation
-(or, for the very first admin, via `db/seeds.rb`).
+address from Madmin, gets back a signup link, and shares that link with the
+invitee (Slack, text, etc.). Clicking it lets them set a password and create their
+account. There is no open registration endpoint — an account can only be created
+in response to an admin-issued invitation (or, for the very first admin, via
+`db/seeds.rb`).
+
+Outgoing mail is not currently configured in this app (`config/environments/production.rb`
+still has the default `host: "example.com"` and SMTP settings commented out), so
+automated invite emails are out of scope for now — see Non-goals and Future work.
 
 ## Goals
 
 - Admins can invite a user by email from Madmin.
-- The invitee receives an email with a link to complete signup.
-- Invitations expire (7 days) and can be revoked or resent by an admin.
+- The admin gets a copyable signup link immediately after creating the invitation,
+  to share manually.
+- Invitations expire (7 days) and can be revoked or regenerated (new token/expiry)
+  by an admin.
 - No account is created until the invitee actually completes the signup form.
 - The very first admin account is bootstrapped via `db/seeds.rb`, since no admin
   exists yet to send an invite.
@@ -39,6 +46,20 @@ endpoint — an account can only be created in response to an admin-issued invit
 - Email domain allowlisting.
 - Inviting someone directly as an admin (admin promotion happens afterward via the
   existing Madmin `User` resource, same as today).
+- Automated invite emails. Outgoing mail isn't configured in this app yet (no
+  SMTP/provider credentials, no real `default_url_options` host). Building
+  `InvitationsMailer` and wiring up a provider is deferred — see Future work.
+
+## Future work
+
+- Configure outgoing mail (pick a provider — Postmark, SES, etc. — set
+  `config.action_mailer.smtp_settings` and a real `default_url_options` host in
+  `config/environments/production.rb`, add credentials via
+  `bin/rails credentials:edit`).
+- Add `InvitationsMailer#invite_email`, mirroring `PasswordsMailer`, and call it
+  from `Madmin::InvitationResource`'s create/regenerate actions once mail works.
+- This also unblocks `PasswordsMailer`, which has the same non-functional-mail gap
+  today.
 
 ## Data model
 
@@ -114,24 +135,21 @@ New `Madmin::InvitationResource`, generated-CRUD style like the existing
 `Madmin::UserResource`:
 
 - **Create**: admin enters an email. `before_create` generates `token` (via
-  `has_secure_token`), sets `expires_at` (7 days out) and `invited_by` (`Current.user`),
-  then sends the invite email.
-- **Member actions**: `Resend` (regenerate token + expiry, resend email) and
-  `Revoke` (set `revoked_at`).
-- Index displays computed status (pending / accepted / expired / revoked) per
-  invitation.
-
-### Mailer
-
-`InvitationsMailer#invite_email(invitation)` — same shape as `PasswordsMailer`,
-links to `edit_registration_path(invitation.token)`.
+  `has_secure_token`), sets `expires_at` (7 days out) and `invited_by`
+  (`Current.user`).
+- **Show/index**: displays the full signup link (`edit_registration_url(invitation.token)`)
+  for the admin to copy, plus computed status (pending / accepted / expired /
+  revoked).
+- **Member actions**: `Regenerate link` (new token + expiry, invalidating the old
+  link — useful if it expired or was shared incorrectly) and `Revoke` (set
+  `revoked_at`).
 
 ### Public side — `RegistrationsController`
 
 - `before_action` loads the `Invitation` by token.
   - Missing token → redirect to login, flash: "This invitation link is invalid."
   - `expired?` → redirect to login, flash: "This invitation has expired. Ask an
-    admin to resend it."
+    admin for a new link."
   - `revoked?` → redirect to login, same generic invalid-link message (does not
     reveal it was specifically revoked).
   - `accepted?` (link reused after signup) → redirect to login, flash: "This
@@ -158,7 +176,7 @@ links to `edit_registration_path(invitation.token)`.
 
 - Invalid/unknown token → redirect to login, generic invalid-link flash.
 - Expired invitation → redirect to login, expiry-specific flash suggesting the
-  admin resend it.
+  admin issue a new link.
 - Revoked invitation → redirect to login, generic invalid-link flash (no detail
   leaked).
 - Already-accepted invitation reused → redirect to login, "already used" flash.
@@ -192,6 +210,6 @@ FactoryBot):
 - **Madmin invitation resource** — full request-spec coverage (unlike the
   existing, untested `Madmin::UserResource`) for:
   - Creating an invitation (including the duplicate-email and
-    already-a-user validation failures).
-  - `Resend` (token/expiry regenerated, email re-sent).
+    already-a-user validation failures) and that the signup link is displayed.
+  - `Regenerate link` (token/expiry change, old token becomes unusable).
   - `Revoke` (sets `revoked_at`, revoked invitation becomes unusable).
