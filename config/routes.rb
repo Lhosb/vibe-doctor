@@ -9,6 +9,7 @@ Rails.application.routes.draw do
   resources :registrations, param: :token, only: [:edit, :update]
   get "/feedback", to: "feedback#index"
   post "/feedback", to: "feedback#create"
+  get "/recommend", to: "recommend#index", as: :recommend
   post "/recommend", to: "recommendations#create"
   post "/recommend/feedback", to: "recommendations#feedback"
   resources :albums, only: [ :show ] do
