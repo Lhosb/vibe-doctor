@@ -8,6 +8,11 @@ class DiscogsConnectionsController < ApplicationController
     redirect_to library_path, notice: "Discogs sync started."
   end
 
+  def resync
+    SyncDiscogsCollectionJob.perform_later(Current.user)
+    redirect_to library_path, notice: "Discogs sync started."
+  end
+
   private
 
   def discogs_connection_params
