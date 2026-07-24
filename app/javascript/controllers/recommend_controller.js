@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
-  static targets = ["query", "genre", "submit", "result"];
+  static targets = ["query", "genre", "submit", "result", "spinner", "submitLabel"];
 
   submit(event) {
     event.preventDefault();
@@ -22,6 +22,10 @@ export default class extends Controller {
 
     this.requestInFlight = true;
     this.submitTarget.disabled = true;
+    this.spinnerTarget.classList.remove("hidden");
+    this.submitLabelTarget.textContent = "Finding a recommendation…";
+    this.resultTarget.setAttribute("aria-busy", "true");
+    this.resultTarget.textContent = "";
 
     fetch("/recommend", { method: "POST", headers, body: formData })
       .then((response) => response.json().then((body) => ({ ok: response.ok, body })))
@@ -36,6 +40,9 @@ export default class extends Controller {
       .finally(() => {
         this.requestInFlight = false;
         this.submitTarget.disabled = false;
+        this.spinnerTarget.classList.add("hidden");
+        this.submitLabelTarget.textContent = "Get a recommendation";
+        this.resultTarget.removeAttribute("aria-busy");
       });
   }
 

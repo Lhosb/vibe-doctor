@@ -62,6 +62,10 @@ export default class extends Controller {
             type: "all",
             title: "All",
           },
+          {
+            type: "inverse",
+            title: "None",
+          },
         ],
       },
       dataZoom: [

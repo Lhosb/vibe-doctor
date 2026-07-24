@@ -1,14 +1,15 @@
 class AlbumResource < Madmin::Resource
   # Attributes
   attribute :id, form: false
+  attribute :title
   attribute :artists
+  attribute :artists_names, form: false, label: "Artists", index: true
+  attribute :enrichment_status, index: true, form: false
   attribute :created_at, form: false
-  attribute :enrichment_status
   attribute :genres
   attribute :master_id
   attribute :styles
   attribute :synthetic_master_id
-  attribute :title
   attribute :updated_at, form: false
   attribute :year
   attribute :youtube_url
@@ -22,6 +23,18 @@ class AlbumResource < Madmin::Resource
 
   # Add scopes to easily filter records
   # scope :published
+
+  # Add filters to allow users to filter the index view
+  # filter :title
+  # filter :created_at
+  # filter :updated_at
+
+  # Add custom validations to the resource
+  # validate do
+  #   errors.add :base, "Something went wrong"
+  # end
+
+  # Add custom actions to the resource
 
   member_action do |record|
     form_with url: repair_youtube_link_madmin_album_path(record), method: :post, local: true do

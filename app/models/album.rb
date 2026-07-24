@@ -61,6 +61,10 @@ class Album < ApplicationRecord
     }
   end
 
+  def artists_names
+    artists.join(", ")
+  end
+
   private
 
   def transition_to!(new_state)
