@@ -27,4 +27,18 @@ RSpec.describe "Recommend page", type: :system, js: true do
     expect(page).to have_current_path(%r{\A/feedback})
     expect(page).to have_content("Kind of Blue")
   end
+
+  it "shows an inline error when no candidates are admitted" do
+    pipeline = instance_double(RecommendationPipeline)
+    allow(RecommendationPipeline).to receive(:new).and_return(pipeline)
+    allow(pipeline).to receive(:call)
+      .and_raise(RecommendationPipeline::NoCandidatesError, "no albums matched the query")
+
+    visit "/recommend"
+    fill_in "What are you in the mood for?", with: "obscure vibe"
+    click_button "Get a recommendation"
+
+    expect(page).to have_content("no albums matched the query")
+    expect(page).to have_current_path("/recommend")
+  end
 end

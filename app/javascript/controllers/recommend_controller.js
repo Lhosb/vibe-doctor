@@ -26,8 +26,13 @@ export default class extends Controller {
     fetch("/recommend", { method: "POST", headers, body: formData })
       .then((response) => response.json().then((body) => ({ ok: response.ok, body })))
       .then(({ ok, body }) => {
-        if (ok) this.renderResult(body);
+        if (ok) {
+          this.renderResult(body);
+        } else {
+          this.renderError(body.error || "Something went wrong — try again");
+        }
       })
+      .catch(() => this.renderError("Something went wrong — try again"))
       .finally(() => {
         this.requestInFlight = false;
         this.submitTarget.disabled = false;
@@ -68,5 +73,14 @@ export default class extends Controller {
     links.append(albumLink, feedbackLink);
     wrapper.append(title, artists, explanationEl, links);
     this.resultTarget.append(wrapper);
+  }
+
+  renderError(message) {
+    this.resultTarget.textContent = "";
+
+    const errorEl = document.createElement("p");
+    errorEl.className = "text-red-600";
+    errorEl.textContent = message;
+    this.resultTarget.append(errorEl);
   }
 }
