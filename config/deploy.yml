@@ -107,7 +107,7 @@ ssh:
 # Use accessory services (secrets come from .kamal/secrets).
 accessories:
   db:
-    image: postgres:16
+    image: pgvector/pgvector:pg18
     host: 5.78.177.23
     env:
       clear:
