@@ -31,20 +31,28 @@ class Invitation < ApplicationRecord
     !expired? && !revoked? && !accepted?
   end
 
+  def status
+    return "accepted" if accepted?
+    return "revoked" if revoked?
+    return "expired" if expired?
+    "pending"
+  end
+
   def regenerate_link!
     update!(token: self.class.generate_unique_secure_token, expires_at: EXPIRATION_PERIOD.from_now)
   end
 
   private
-    def set_expiration
-      self.expires_at ||= EXPIRATION_PERIOD.from_now
-    end
 
-    def email_not_already_a_user
-      errors.add(:email, "already has an account") if User.exists?(email_address: email)
-    end
+  def set_expiration
+    self.expires_at ||= EXPIRATION_PERIOD.from_now
+  end
 
-    def no_other_usable_invitation_for_email
-      errors.add(:email, "already has a pending invitation") if Invitation.usable.where(email: email).exists?
-    end
+  def email_not_already_a_user
+    errors.add(:email, "already has an account") if User.exists?(email_address: email)
+  end
+
+  def no_other_usable_invitation_for_email
+    errors.add(:email, "already has a pending invitation") if Invitation.usable.where(email: email).exists?
+  end
 end

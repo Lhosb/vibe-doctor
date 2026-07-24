@@ -1,6 +1,7 @@
 class InvitationResource < Madmin::Resource
   attribute :id, form: false
   attribute :email
+  attribute :status, form: false
   attribute :token, form: false
   attribute :expires_at, form: false
   attribute :accepted_at, form: false
@@ -20,6 +21,7 @@ class InvitationResource < Madmin::Resource
   end
 
   member_action do |record|
-    button_to "Revoke", revoke_madmin_invitation_path(record), method: :post, class: "btn btn-danger" unless record.revoked?
+    next if record.revoked?
+    button_to "Revoke", revoke_madmin_invitation_path(record), method: :post, class: "btn btn-danger"
   end
 end

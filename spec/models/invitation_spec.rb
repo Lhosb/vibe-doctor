@@ -72,6 +72,26 @@ RSpec.describe Invitation, type: :model do
     end
   end
 
+  describe "#status" do
+    it "is pending when unexpired, unrevoked, and unaccepted" do
+      expect(create(:invitation).status).to eq("pending")
+    end
+
+    it "is expired when past its expiration" do
+      expect(create(:invitation, expires_at: 1.minute.ago).status).to eq("expired")
+    end
+
+    it "is revoked when revoked, even if also expired" do
+      invitation = create(:invitation, expires_at: 1.minute.ago, revoked_at: Time.current)
+      expect(invitation.status).to eq("revoked")
+    end
+
+    it "is accepted when accepted, even if also revoked" do
+      invitation = create(:invitation, revoked_at: Time.current, accepted_at: Time.current)
+      expect(invitation.status).to eq("accepted")
+    end
+  end
+
   describe "#regenerate_link!" do
     it "issues a new token and resets the expiration so an expired invitation becomes usable again" do
       invitation = create(:invitation, expires_at: 1.minute.ago)
