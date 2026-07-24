@@ -3,5 +3,6 @@ class AlbumsController < ApplicationController
     @album = Album.find(params[:id])
     override = VibeOverride.find_by(user: Current.user, album: @album)
     @vibe_mood = override&.mood_snapshot || @album.mood_vector
+    @vibe_card = @album.vibe_card
   end
 end

@@ -39,4 +39,30 @@ RSpec.describe "GET /albums/:id", type: :request do
 
     expect(response.body).not_to include("Mood breakdown")
   end
+
+  it "shows the vibe card when present with prose" do
+    album = create(:album, :grounded)
+    create(:vibe_card, album: album, prose: "A record built for slow evenings.")
+
+    get album_path(album)
+
+    expect(response.body).to include("A record built for slow evenings.")
+  end
+
+  it "omits the vibe card section when the vibe card has blank prose" do
+    album = create(:album, :grounded)
+    create(:vibe_card, album: album, prose: "")
+
+    get album_path(album)
+
+    expect(response.body).not_to include("Vibe card")
+  end
+
+  it "omits the vibe card section when no vibe card exists" do
+    album = create(:album, :grounded)
+
+    get album_path(album)
+
+    expect(response.body).not_to include("Vibe card")
+  end
 end
