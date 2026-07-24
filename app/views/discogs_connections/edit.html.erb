@@ -1,0 +1,27 @@
+<div class="mx-auto md:w-2/3 w-full">
+  <% if alert = flash[:alert] %>
+    <p class="py-2 px-3 bg-red-50 mb-5 text-red-500 font-medium rounded-lg inline-block" id="alert"><%= alert %></p>
+  <% end %>
+
+  <h1 class="text-2xl font-bold">Discogs Settings</h1>
+
+  <p class="my-4 text-sm text-gray-600">
+    To get your token: go to Discogs &rarr;
+    <%= link_to "Settings", "https://www.discogs.com/settings/developers", target: "_blank", rel: "noopener", class: "text-blue-600 underline" %>
+    &rarr; Developers &rarr; Generate new token. Copy that value and paste it into the field below.
+  </p>
+
+  <%= form_with url: discogs_connection_path, method: :patch, class: "contents" do |form| %>
+    <div class="my-5">
+      <%= form.label :discogs_username %>
+      <%= form.text_field :discogs_username, value: Current.user.discogs_username, class: "block border rounded-md px-3 py-2 mt-1 w-full" %>
+    </div>
+
+    <div class="my-5">
+      <%= form.label :discogs_token, "Discogs personal access token" %>
+      <%= form.text_field :discogs_token, value: Current.user.discogs_token, class: "block border rounded-md px-3 py-2 mt-1 w-full" %>
+    </div>
+
+    <%= form.submit "Save", class: "rounded-md px-3.5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium cursor-pointer" %>
+  <% end %>
+</div>
