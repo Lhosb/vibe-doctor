@@ -43,7 +43,7 @@ RSpec.describe "Discogs connection", type: :system do
     fill_in "Discogs personal access token", with: "test-token-abc"
 
     perform_enqueued_jobs do
-      click_button "Connect"
+      click_button "Save"
     end
 
     expect(page).to have_content("Album One")

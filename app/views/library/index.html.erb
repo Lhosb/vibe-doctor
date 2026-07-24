@@ -1,7 +1,7 @@
 <h1 class="text-2xl font-bold mb-4">Library</h1>
 
 <% if Current.user.discogs_username.blank? %>
-  <%= link_to "Connect Discogs", new_discogs_connection_path, class: "text-blue-600 underline" %>
+  <%= link_to "Connect Discogs", edit_discogs_connection_path, class: "text-blue-600 underline" %>
 <% else %>
   <table class="w-full text-left text-sm">
     <thead>
