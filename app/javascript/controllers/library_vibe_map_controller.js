@@ -26,6 +26,12 @@ export default class extends Controller {
 
   buildOption() {
     return {
+      // Disabled: with the default entry animation, a point's final on-screen
+      // position isn't settled until the animation completes, so a click or
+      // drag that starts immediately after render can land at a stale
+      // position (confirmed via a live spike -- this caused an intermittent
+      // "click misses the point entirely" failure).
+      animation: false,
       // `scale: true` is required: without it, ECharts' default numeric axis
       // forces the range to include 0 with no padding, which would bunch
       // real mood data into a corner -- exactly the problem this feature
