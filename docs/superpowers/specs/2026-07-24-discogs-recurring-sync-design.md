@@ -88,12 +88,15 @@ credentials form, visible whenever `Current.user.discogs_token.present?`.
 
 - **Invalid/revoked token**: `DiscogsClient` raises `DiscogsClient::Error` on
   non-success responses. `SyncDiscogsCollectionJob` doesn't rescue this
-  today, so it propagates, Solid Queue's default retry/backoff applies, and
-  it eventually lands in the failed jobs table. This is the same failure
-  mode that exists today for the one-time sync — now it just repeats
-  nightly instead of once. A user with a permanently broken token will fail
-  silently every night; there's no notification for this yet (see Out of
-  scope). Known gap, not solved here.
+  today, and `ApplicationJob` has no `retry_on` configured, so there's no
+  retry/backoff — the job fails and lands in `solid_queue_failed_executions`
+  on the very first raise. This is the same failure mode that exists today
+  for the one-time sync — now it just repeats nightly instead of once, with
+  no cleanup: `clear_solid_queue_finished_jobs` only clears finished jobs,
+  not failed ones. A user with a permanently broken token will fail
+  silently every night, piling up failed executions; there's no
+  notification for this yet (see Out of scope). Known gap, not solved
+  here.
 - **Partial failure across users**: isolated by design — each user gets
   their own `SyncDiscogsCollectionJob`, so one broken token doesn't block
   anyone else's sync.
