@@ -5,6 +5,12 @@ RSpec.describe "GET /vibe_map", type: :request do
 
   before { sign_in_as(user) }
 
+  def dots_from(response_body)
+    html = Nokogiri::HTML5.parse(response_body)
+    json = html.at_css("[data-library-vibe-map-dots-value]")["data-library-vibe-map-dots-value"]
+    JSON.parse(json)
+  end
+
   it "shows only the current user's grounded albums" do
     grounded = create(:album, :grounded)
     create(:mood_vector, album: grounded, valence: 0.7, arousal: 0.3)
@@ -13,7 +19,7 @@ RSpec.describe "GET /vibe_map", type: :request do
     get "/vibe_map"
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(%(data-album-id="#{grounded.id}"))
+    expect(dots_from(response.body).map { |d| d["id"] }).to include(grounded.id)
   end
 
   it "excludes another user's collection albums" do
@@ -24,7 +30,7 @@ RSpec.describe "GET /vibe_map", type: :request do
 
     get "/vibe_map"
 
-    expect(response.body).not_to include(%(data-album-id="#{other_album.id}"))
+    expect(dots_from(response.body).map { |d| d["id"] }).not_to include(other_album.id)
   end
 
   it "excludes ungrounded albums from the current user's own collection" do
@@ -33,64 +39,28 @@ RSpec.describe "GET /vibe_map", type: :request do
 
     get "/vibe_map"
 
-    expect(response.body).not_to include(%(data-album-id="#{pending_album.id}"))
+    expect(dots_from(response.body).map { |d| d["id"] }).not_to include(pending_album.id)
   end
 
-  it "rescales dot positions to fill the display range when a spread exists" do
-    low = create(:album, :grounded, title: "Low")
-    high = create(:album, :grounded, title: "High")
-    create(:mood_vector, album: low, valence: 0.2, arousal: 0.2)
-    create(:mood_vector, album: high, valence: 0.8, arousal: 0.8)
-    CollectionItem.create!(user: user, album: low, release_id: 10)
-    CollectionItem.create!(user: user, album: high, release_id: 11)
-
-    get "/vibe_map"
-
-    expect(response.body).to match(/left:\s*0\.0%/)
-    expect(response.body).to match(/left:\s*100\.0%/)
-  end
-
-  it "rescales only the axis that actually has spread" do
-    low_valence = create(:album, :grounded)
-    high_valence = create(:album, :grounded)
-    create(:mood_vector, album: low_valence, valence: 0.3, arousal: 0.5)
-    create(:mood_vector, album: high_valence, valence: 0.9, arousal: 0.5)
-    CollectionItem.create!(user: user, album: low_valence, release_id: 12)
-    CollectionItem.create!(user: user, album: high_valence, release_id: 13)
-
-    get "/vibe_map"
-
-    # valence has real spread (0.3..0.9) -> rescaled to fill 0%..100%
-    expect(response.body).to match(/left:\s*0\.0%/)
-    expect(response.body).to match(/left:\s*100\.0%/)
-    # arousal is identical (0.5) for both -> no rescaling, raw value used: 100 - 0.5*100 = 50.0
-    expect(response.body).to match(/top:\s*50\.0%/)
-  end
-
-  it "exposes the valence/arousal range as data attributes for the drag controller" do
-    low = create(:album, :grounded)
-    high = create(:album, :grounded)
-    create(:mood_vector, album: low, valence: 0.2, arousal: 0.25)
-    create(:mood_vector, album: high, valence: 0.8, arousal: 0.75)
-    CollectionItem.create!(user: user, album: low, release_id: 13)
-    CollectionItem.create!(user: user, album: high, release_id: 14)
-
-    get "/vibe_map"
-
-    expect(response.body).to include(%(data-library-vibe-map-valence-min-value="0.2"))
-    expect(response.body).to include(%(data-library-vibe-map-valence-max-value="0.8"))
-    expect(response.body).to include(%(data-library-vibe-map-arousal-min-value="0.25"))
-    expect(response.body).to include(%(data-library-vibe-map-arousal-max-value="0.75"))
-  end
-
-  it "shows the album title as an always-on label" do
-    grounded = create(:album, :grounded, title: "Kind of Blue")
-    create(:mood_vector, album: grounded, valence: 0.5, arousal: 0.5)
+  it "includes each dot's raw valence/arousal and mood fields, for the client to render and drag-override" do
+    grounded = create(:album, :grounded, title: "Kind of Blue", genres: [ "Jazz" ])
+    create(
+      :mood_vector, album: grounded,
+      valence: 0.7, arousal: 0.3, danceability: 0.2, mood_acoustic: 0.9, mood_relaxed: 0.1, mood_happy: 0.8
+    )
     CollectionItem.create!(user: user, album: grounded, release_id: 15)
 
     get "/vibe_map"
 
-    expect(response.body).to include(%(class="vibe-map-label))
-    expect(response.body).to include("Kind of Blue")
+    dot = dots_from(response.body).find { |d| d["id"] == grounded.id }
+    expect(dot["title"]).to eq("Kind of Blue")
+    expect(dot["href"]).to eq(Rails.application.routes.url_helpers.album_path(grounded))
+    expect(dot["valence"]).to eq(0.7)
+    expect(dot["arousal"]).to eq(0.3)
+    expect(dot["genre"]).to eq("Jazz")
+    expect(dot["danceability"]).to eq(0.2)
+    expect(dot["mood_acoustic"]).to eq(0.9)
+    expect(dot["mood_relaxed"]).to eq(0.1)
+    expect(dot["mood_happy"]).to eq(0.8)
   end
 end
