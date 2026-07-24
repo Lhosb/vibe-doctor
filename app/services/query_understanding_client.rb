@@ -74,6 +74,6 @@ class QueryUnderstandingClient
   end
 
   def embed(query_text)
-    @client.embeddings.create(model: EMBEDDING_MODEL, input: [query_text]).data.first.embedding
+    @client.embeddings.create(model: EMBEDDING_MODEL, input: [ query_text ]).data.first.embedding
   end
 end

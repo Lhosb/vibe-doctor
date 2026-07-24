@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe EnrichAlbumJob, type: :job do
-  let(:album) { Album.create!(master_id: 1, title: "Kind of Blue", artists: ["Miles Davis"], year: 1959, genres: ["Jazz"]) }
+  let(:album) { Album.create!(master_id: 1, title: "Kind of Blue", artists: [ "Miles Davis" ], year: 1959, genres: [ "Jazz" ]) }
   let(:mood_grounder) { instance_double(MoodGroundingService) }
   let(:vibe_card_generator) { instance_double(VibeCardGenerator) }
   let(:embedding_service) { instance_double(AlbumEmbeddingService) }
@@ -11,8 +11,8 @@ RSpec.describe EnrichAlbumJob, type: :job do
   end
   let(:card_schema) do
     VibeCardGenerator::Schema.new(
-      time_of_day: ["evening"], activities: ["winding down"], energy_arc: "Hushed then loosens.",
-      texture: "Warm horns.", seasons: ["autumn"], prose: "A record for slow evenings."
+      time_of_day: [ "evening" ], activities: [ "winding down" ], energy_arc: "Hushed then loosens.",
+      texture: "Warm horns.", seasons: [ "autumn" ], prose: "A record for slow evenings."
     )
   end
   let(:facet_vectors) do

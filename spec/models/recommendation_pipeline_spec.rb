@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe RecommendationPipeline do
   let(:user) { create(:user) }
-  let(:album) { create(:album, :grounded, artists: ["Artist A"], genres: ["Jazz"]) }
+  let(:album) { create(:album, :grounded, artists: [ "Artist A" ], genres: [ "Jazz" ]) }
 
   before do
     allow(QueryUnderstandingCache).to receive(:fetch).and_return(
@@ -17,10 +17,10 @@ RSpec.describe RecommendationPipeline do
       )
     )
     allow(CandidateRetrieval).to receive(:new).and_return(
-      instance_double(CandidateRetrieval, call: [CandidateRetrieval::Candidate.new(album: album, blended_score: 0.2)])
+      instance_double(CandidateRetrieval, call: [ CandidateRetrieval::Candidate.new(album: album, blended_score: 0.2) ])
     )
     allow(RerankClient).to receive(:new).and_return(
-      instance_double(RerankClient, rerank: [{ album: album, rerank_score: 0.9, rationale: "warm and mellow" }])
+      instance_double(RerankClient, rerank: [ { album: album, rerank_score: 0.9, rationale: "warm and mellow" } ])
     )
   end
 
@@ -47,12 +47,12 @@ RSpec.describe RecommendationPipeline do
   end
 
   it "records cooldown for every credited artist on a multi-artist album" do
-    collab_album = create(:album, :grounded, artists: ["Artist A", "Artist B"])
+    collab_album = create(:album, :grounded, artists: [ "Artist A", "Artist B" ])
     allow(CandidateRetrieval).to receive(:new).and_return(
-      instance_double(CandidateRetrieval, call: [CandidateRetrieval::Candidate.new(album: collab_album, blended_score: 0.2)])
+      instance_double(CandidateRetrieval, call: [ CandidateRetrieval::Candidate.new(album: collab_album, blended_score: 0.2) ])
     )
     allow(RerankClient).to receive(:new).and_return(
-      instance_double(RerankClient, rerank: [{ album: collab_album, rerank_score: 0.9, rationale: "warm and mellow" }])
+      instance_double(RerankClient, rerank: [ { album: collab_album, rerank_score: 0.9, rationale: "warm and mellow" } ])
     )
 
     described_class.new(user: user, query_text: "warm sunday jazz").call

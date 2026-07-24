@@ -2,24 +2,24 @@ require "rails_helper"
 
 RSpec.describe "POST /recommend", type: :request do
   let(:user) { create(:user, password: "s3cret-pass") }
-  let!(:album) { create(:album, :grounded, genres: ["Jazz"], artists: ["Artist A"]) }
+  let!(:album) { create(:album, :grounded, genres: [ "Jazz" ], artists: [ "Artist A" ]) }
 
   let(:intent_schema) do
     QueryUnderstandingClient::Schema.new(
       valence: 0.6, arousal: 0.3, danceability: 0.4, mood_acoustic: 0.7, mood_relaxed: 0.65, mood_happy: 0.55,
-      genre: "Jazz", keywords: ["mellow"]
+      genre: "Jazz", keywords: [ "mellow" ]
     )
   end
   let(:rerank_schema) do
     RerankClient::Schema.new(
-      rankings: [RerankClient::Ranking.new(album_id: album.id, rerank_score: 0.9, rationale: "warm and mellow")]
+      rankings: [ RerankClient::Ranking.new(album_id: album.id, rerank_score: 0.9, rationale: "warm and mellow") ]
     )
   end
 
   def fake_message_response(parsed)
     content_item = Struct.new(:type, :parsed).new(:output_text, parsed)
-    output_item = Struct.new(:type, :content).new(:message, [content_item])
-    Struct.new(:output).new([output_item])
+    output_item = Struct.new(:type, :content).new(:message, [ content_item ])
+    Struct.new(:output).new([ output_item ])
   end
 
   around do |example|
@@ -47,7 +47,7 @@ RSpec.describe "POST /recommend", type: :request do
     allow(fake_client).to receive(:responses).and_return(responses)
     allow(fake_client).to receive(:embeddings).and_return(embeddings)
     allow(responses).to receive(:create).and_return(fake_message_response(intent_schema), fake_message_response(rerank_schema))
-    allow(embeddings).to receive(:create).and_return(Struct.new(:data).new([Struct.new(:embedding).new(Array.new(1536, 0.1))]))
+    allow(embeddings).to receive(:create).and_return(Struct.new(:data).new([ Struct.new(:embedding).new(Array.new(1536, 0.1)) ]))
 
     post session_path, params: { email_address: user.email_address, password: "s3cret-pass" }
   end

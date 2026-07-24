@@ -9,6 +9,6 @@ class CreateAlbumAffinities < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :album_affinities, [:user_id, :album_id], unique: true
+    add_index :album_affinities, [ :user_id, :album_id ], unique: true
   end
 end

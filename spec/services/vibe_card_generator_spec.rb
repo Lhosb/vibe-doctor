@@ -1,17 +1,17 @@
 require "rails_helper"
 
 RSpec.describe VibeCardGenerator do
-  let(:album) { Album.create!(master_id: 1, title: "Kind of Blue", artists: ["Miles Davis"], year: 1959, genres: ["Jazz"], styles: ["Modal"]) }
+  let(:album) { Album.create!(master_id: 1, title: "Kind of Blue", artists: [ "Miles Davis" ], year: 1959, genres: [ "Jazz" ], styles: [ "Modal" ]) }
   let(:parsed_card) do
     VibeCardGenerator::Schema.new(
-      time_of_day: ["evening", "late night"], activities: ["winding down", "reading"],
+      time_of_day: [ "evening", "late night" ], activities: [ "winding down", "reading" ],
       energy_arc: "Opens hushed, gradually loosens.", texture: "Warm, close-mic'd horns.",
-      seasons: ["autumn", "winter"], prose: "A record for slow evenings."
+      seasons: [ "autumn", "winter" ], prose: "A record for slow evenings."
     )
   end
   let(:fake_content_item) { Struct.new(:type, :parsed).new(:output_text, parsed_card) }
-  let(:fake_output_item) { Struct.new(:type, :content).new(:message, [fake_content_item]) }
-  let(:fake_response) { Struct.new(:output).new([fake_output_item]) }
+  let(:fake_output_item) { Struct.new(:type, :content).new(:message, [ fake_content_item ]) }
+  let(:fake_response) { Struct.new(:output).new([ fake_output_item ]) }
   let(:client) { double("OpenAI::Client") } # rubocop:disable RSpec/VerifiedDoubles
 
   subject(:generator) { described_class.new(client: client) }

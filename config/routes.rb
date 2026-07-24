@@ -9,8 +9,8 @@ Rails.application.routes.draw do
   post "/feedback", to: "feedback#create"
   post "/recommend", to: "recommendations#create"
   post "/recommend/feedback", to: "recommendations#feedback"
-  resources :albums, only: [:show] do
-    resource :vibe_override, only: [:create], controller: "vibe_overrides"
+  resources :albums, only: [ :show ] do
+    resource :vibe_override, only: [ :create ], controller: "vibe_overrides"
   end
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 

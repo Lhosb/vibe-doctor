@@ -50,10 +50,10 @@ class ItunesPreviewMatcher
 
   def best_candidate(term, title, artists, country:)
     candidates = search_albums(term, country: country)
-    return [nil, nil] if candidates.empty?
+    return [ nil, nil ] if candidates.empty?
 
     best = candidates.max_by { |candidate| confidence(title, artists, candidate) }
-    [best, confidence(title, artists, best)]
+    [ best, confidence(title, artists, best) ]
   end
 
   def confidence(title, artists, candidate)

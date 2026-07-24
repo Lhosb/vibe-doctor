@@ -1,12 +1,12 @@
 require "rails_helper"
 
 RSpec.describe AlbumEmbeddingService do
-  let(:album) { Album.create!(master_id: 1, title: "Kind of Blue", artists: ["Miles Davis"], year: 1959, genres: ["Jazz"], styles: ["Modal"]) }
+  let(:album) { Album.create!(master_id: 1, title: "Kind of Blue", artists: [ "Miles Davis" ], year: 1959, genres: [ "Jazz" ], styles: [ "Modal" ]) }
   let(:mood_vector) { album.build_mood_vector(valence: 0.3, arousal: 0.3, mood_source: "essentia_itunes") }
   let(:vibe_card) do
     album.build_vibe_card(
-      time_of_day: ["evening"], activities: ["winding down"], energy_arc: "Opens hushed.",
-      texture: "Warm horns.", seasons: ["autumn"], prose: "A record for slow evenings."
+      time_of_day: [ "evening" ], activities: [ "winding down" ], energy_arc: "Opens hushed.",
+      texture: "Warm horns.", seasons: [ "autumn" ], prose: "A record for slow evenings."
     )
   end
   let(:client) { double("OpenAI::Client") } # rubocop:disable RSpec/VerifiedDoubles
@@ -15,7 +15,7 @@ RSpec.describe AlbumEmbeddingService do
   subject(:service) { described_class.new(client: client) }
 
   def fake_embedding_data(count)
-    Array.new(count) { |i| Struct.new(:embedding).new([i.to_f, 0.5]) }
+    Array.new(count) { |i| Struct.new(:embedding).new([ i.to_f, 0.5 ]) }
   end
 
   before do
@@ -36,8 +36,8 @@ RSpec.describe AlbumEmbeddingService do
     result = service.embed(album, mood_vector, vibe_card)
 
     expect(result.keys).to eq(%i[sonic emotional situational era])
-    expect(result[:sonic]).to eq([0.0, 0.5])
-    expect(result[:era]).to eq([3.0, 0.5])
+    expect(result[:sonic]).to eq([ 0.0, 0.5 ])
+    expect(result[:era]).to eq([ 3.0, 0.5 ])
   end
 
   it "falls back a blank emotional/situational facet to the era text" do

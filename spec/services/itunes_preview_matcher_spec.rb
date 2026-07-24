@@ -32,10 +32,10 @@ RSpec.describe ItunesPreviewMatcher do
       { "wrapperType" => "collection" }
     ])
 
-    matches = matcher.find_previews(title: "Kind of Blue", artists: ["Miles Davis"], max_tracks: 5)
+    matches = matcher.find_previews(title: "Kind of Blue", artists: [ "Miles Davis" ], max_tracks: 5)
 
-    expect(matches.map(&:preview_url)).to eq(["https://example.com/1.m4a", "https://example.com/2.m4a"])
-    expect(matches.map(&:match_confidence).uniq).to eq([1.0])
+    expect(matches.map(&:preview_url)).to eq([ "https://example.com/1.m4a", "https://example.com/2.m4a" ])
+    expect(matches.map(&:match_confidence).uniq).to eq([ 1.0 ])
   end
 
   it "caps results at max_tracks" do
@@ -44,7 +44,7 @@ RSpec.describe ItunesPreviewMatcher do
     ])
     stub_lookup(1, results: (1..7).map { |n| { "wrapperType" => "track", "trackNumber" => n, "previewUrl" => "https://example.com/#{n}.m4a" } })
 
-    matches = matcher.find_previews(title: "Kind of Blue", artists: ["Miles Davis"], max_tracks: 3)
+    matches = matcher.find_previews(title: "Kind of Blue", artists: [ "Miles Davis" ], max_tracks: 3)
 
     expect(matches.length).to eq(3)
   end
@@ -58,9 +58,9 @@ RSpec.describe ItunesPreviewMatcher do
       { "wrapperType" => "track", "trackNumber" => 2, "previewUrl" => "https://example.com/2.m4a" }
     ])
 
-    matches = matcher.find_previews(title: "Kind of Blue", artists: ["Miles Davis"], max_tracks: 5)
+    matches = matcher.find_previews(title: "Kind of Blue", artists: [ "Miles Davis" ], max_tracks: 5)
 
-    expect(matches.map(&:preview_url)).to eq(["https://example.com/2.m4a"])
+    expect(matches.map(&:preview_url)).to eq([ "https://example.com/2.m4a" ])
   end
 
   it "falls back to the JP storefront when the default-storefront lookup is empty" do
@@ -72,9 +72,9 @@ RSpec.describe ItunesPreviewMatcher do
       { "wrapperType" => "track", "trackNumber" => 1, "previewUrl" => "https://example.com/jp.m4a" }
     ])
 
-    matches = matcher.find_previews(title: "Kind of Blue", artists: ["Miles Davis"], max_tracks: 5)
+    matches = matcher.find_previews(title: "Kind of Blue", artists: [ "Miles Davis" ], max_tracks: 5)
 
-    expect(matches.map(&:preview_url)).to eq(["https://example.com/jp.m4a"])
+    expect(matches.map(&:preview_url)).to eq([ "https://example.com/jp.m4a" ])
   end
 
   it "falls back to the JP storefront when the default-storefront tracks have no preview URLs" do
@@ -88,9 +88,9 @@ RSpec.describe ItunesPreviewMatcher do
       { "wrapperType" => "track", "trackNumber" => 1, "previewUrl" => "https://example.com/jp.m4a" }
     ])
 
-    matches = matcher.find_previews(title: "Kind of Blue", artists: ["Miles Davis"], max_tracks: 5)
+    matches = matcher.find_previews(title: "Kind of Blue", artists: [ "Miles Davis" ], max_tracks: 5)
 
-    expect(matches.map(&:preview_url)).to eq(["https://example.com/jp.m4a"])
+    expect(matches.map(&:preview_url)).to eq([ "https://example.com/jp.m4a" ])
   end
 
   it "falls back to a JP-storefront candidate when the default candidate has no preview URLs in either storefront" do
@@ -110,9 +110,9 @@ RSpec.describe ItunesPreviewMatcher do
       { "wrapperType" => "track", "trackNumber" => 1, "previewUrl" => "https://example.com/jp2.m4a" }
     ])
 
-    matches = matcher.find_previews(title: "Kind of Blue", artists: ["Miles Davis"], max_tracks: 5)
+    matches = matcher.find_previews(title: "Kind of Blue", artists: [ "Miles Davis" ], max_tracks: 5)
 
-    expect(matches.map(&:preview_url)).to eq(["https://example.com/jp2.m4a"])
+    expect(matches.map(&:preview_url)).to eq([ "https://example.com/jp2.m4a" ])
   end
 
   it "falls back to a JP-storefront search when the default-storefront search is empty" do
@@ -124,9 +124,9 @@ RSpec.describe ItunesPreviewMatcher do
       { "wrapperType" => "track", "trackNumber" => 1, "previewUrl" => "https://example.com/jp.m4a" }
     ])
 
-    matches = matcher.find_previews(title: "Kind of Blue", artists: ["Miles Davis"], max_tracks: 5)
+    matches = matcher.find_previews(title: "Kind of Blue", artists: [ "Miles Davis" ], max_tracks: 5)
 
-    expect(matches.map(&:preview_url)).to eq(["https://example.com/jp.m4a"])
+    expect(matches.map(&:preview_url)).to eq([ "https://example.com/jp.m4a" ])
   end
 
   it "falls through the ladder to the title-only rung when the artist+title rung has zero results" do
@@ -139,9 +139,9 @@ RSpec.describe ItunesPreviewMatcher do
       { "wrapperType" => "track", "trackNumber" => 1, "previewUrl" => "https://example.com/3.m4a" }
     ])
 
-    matches = matcher.find_previews(title: "Kind of Blue", artists: ["Miles Davis"], max_tracks: 5)
+    matches = matcher.find_previews(title: "Kind of Blue", artists: [ "Miles Davis" ], max_tracks: 5)
 
-    expect(matches.map(&:preview_url)).to eq(["https://example.com/3.m4a"])
+    expect(matches.map(&:preview_url)).to eq([ "https://example.com/3.m4a" ])
   end
 
   it "returns an empty array when no rung ever yields a preview" do
@@ -150,6 +150,6 @@ RSpec.describe ItunesPreviewMatcher do
     stub_search("Kind of Blue", results: [])
     stub_search("Kind of Blue", country: "JP", results: [])
 
-    expect(matcher.find_previews(title: "Kind of Blue", artists: ["Miles Davis"], max_tracks: 5)).to eq([])
+    expect(matcher.find_previews(title: "Kind of Blue", artists: [ "Miles Davis" ], max_tracks: 5)).to eq([])
   end
 end

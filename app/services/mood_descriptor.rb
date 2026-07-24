@@ -16,11 +16,11 @@ module MoodDescriptor
 
   def valence_phrase(valence)
     return "upbeat, positive mood" if valence >= 0.6
-    return "melancholic or somber mood" if valence <= 0.4
+    "melancholic or somber mood" if valence <= 0.4
   end
 
   def arousal_phrase(arousal)
     return "high energy" if arousal >= 0.6
-    return "mellow, low-key energy" if arousal <= 0.4
+    "mellow, low-key energy" if arousal <= 0.4
   end
 end

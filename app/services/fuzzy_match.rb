@@ -15,7 +15,7 @@ module FuzzyMatch
     combined_a = diff_a.empty? ? shared : "#{shared} #{diff_a.sort.join(" ")}".strip
     combined_b = diff_b.empty? ? shared : "#{shared} #{diff_b.sort.join(" ")}".strip
 
-    [ratio(shared, combined_a), ratio(shared, combined_b), ratio(combined_a, combined_b)].max
+    [ ratio(shared, combined_a), ratio(shared, combined_b), ratio(combined_a, combined_b) ].max
   end
 
   def tokenize(text)
@@ -35,9 +35,9 @@ module FuzzyMatch
   def longest_common_subsequence_length(a, b)
     previous = Array.new(b.length + 1, 0)
     a.each_char do |char_a|
-      current = [0]
+      current = [ 0 ]
       b.each_char.with_index do |char_b, j|
-        current << (char_a == char_b ? previous[j] + 1 : [current[j], previous[j + 1]].max)
+        current << (char_a == char_b ? previous[j] + 1 : [ current[j], previous[j + 1] ].max)
       end
       previous = current
     end

@@ -9,7 +9,7 @@ RSpec.describe AlbumAffinity do
     before { create(:album_affinity, user: user, album: scored_album, score: 0.42) }
 
     it "returns known scores and defaults missing albums to 0.0" do
-      scores = described_class.scores_for(user: user, albums: [scored_album, unscored_album])
+      scores = described_class.scores_for(user: user, albums: [ scored_album, unscored_album ])
 
       expect(scores[scored_album.id]).to eq(0.42)
       expect(scores[unscored_album.id]).to be_nil # caller applies the 0.0 default via Hash#fetch

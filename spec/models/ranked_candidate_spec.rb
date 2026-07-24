@@ -2,8 +2,8 @@ require "rails_helper"
 
 RSpec.describe RankedCandidate do
   let(:user) { create(:user) }
-  let(:favored_album) { create(:album, :grounded, artists: ["Favored Artist"]) }
-  let(:cooled_album) { create(:album, :grounded, artists: ["Cooled Artist"]) }
+  let(:favored_album) { create(:album, :grounded, artists: [ "Favored Artist" ]) }
+  let(:cooled_album) { create(:album, :grounded, artists: [ "Cooled Artist" ]) }
   let(:candidates) do
     [
       CandidateRetrieval::Candidate.new(album: favored_album, blended_score: 0.30),
@@ -24,9 +24,9 @@ RSpec.describe RankedCandidate do
   end
 
   it "takes the max cooldown penalty across a multi-artist album's credited artists" do
-    collab_album = create(:album, :grounded, artists: ["Someone Else", "Cooled Artist"])
+    collab_album = create(:album, :grounded, artists: [ "Someone Else", "Cooled Artist" ])
     create(:artist_cooldown, user: user, artist_name: "Someone Else", last_recommended_at: 13.days.ago)
-    collab_candidates = [CandidateRetrieval::Candidate.new(album: collab_album, blended_score: 0.30)]
+    collab_candidates = [ CandidateRetrieval::Candidate.new(album: collab_album, blended_score: 0.30) ]
 
     ranked = described_class.rank(candidates: collab_candidates, user: user)
     expected_penalty = ArtistCooldown.penalty_for(user: user, artist_name: "Cooled Artist")

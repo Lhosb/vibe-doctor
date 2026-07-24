@@ -42,8 +42,8 @@ class RecommendationPipeline
       album: chosen[:album],
       query_text: @query_text,
       candidates_considered: candidates_considered,
-      blended_scores: ranked.to_h { |r| [r.album.id.to_s, r.blended_score] },
-      rerank_scores: reranked.to_h { |r| [r[:album].id.to_s, r[:rerank_score]] },
+      blended_scores: ranked.to_h { |r| [ r.album.id.to_s, r.blended_score ] },
+      rerank_scores: reranked.to_h { |r| [ r[:album].id.to_s, r[:rerank_score] ] },
       final_score: final_score,
       explanation: chosen[:rationale]
     )

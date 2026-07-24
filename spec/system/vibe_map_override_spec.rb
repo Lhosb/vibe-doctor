@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe "Vibe map override", type: :system, js: true do
   let(:user) { create(:user) }
-  let(:album) { create(:album, :grounded, genres: ["Jazz"]) }
+  let(:album) { create(:album, :grounded, genres: [ "Jazz" ]) }
 
   before do
     sign_in_as(user)

@@ -22,9 +22,9 @@ RSpec.describe "Discogs connection", type: :system do
                 master_id: 500,
                 title: "Album One",
                 year: 1999,
-                genres: ["Rock"],
-                styles: ["Alternative Rock"],
-                artists: [{ name: "Band One" }]
+                genres: [ "Rock" ],
+                styles: [ "Alternative Rock" ],
+                artists: [ { name: "Band One" } ]
               }
             }
           ]

@@ -20,9 +20,9 @@ RSpec.describe SyncDiscogsCollectionJob, type: :job do
                 master_id: 500,
                 title: "Album One",
                 year: 1999,
-                genres: ["Rock"],
-                styles: ["Alternative Rock"],
-                artists: [{ name: "Band One" }]
+                genres: [ "Rock" ],
+                styles: [ "Alternative Rock" ],
+                artists: [ { name: "Band One" } ]
               }
             }
           ]
@@ -45,9 +45,9 @@ RSpec.describe SyncDiscogsCollectionJob, type: :job do
                 master_id: 0,
                 title: "Obscure Pressing",
                 year: 2005,
-                genres: ["Jazz"],
-                styles: ["Fusion"],
-                artists: [{ name: "Solo Artist" }]
+                genres: [ "Jazz" ],
+                styles: [ "Fusion" ],
+                artists: [ { name: "Solo Artist" } ]
               }
             }
           ]
@@ -63,7 +63,7 @@ RSpec.describe SyncDiscogsCollectionJob, type: :job do
     canonical = Album.find_by(master_id: 500)
     expect(canonical.title).to eq("Album One")
     expect(canonical.synthetic_master_id).to eq(false)
-    expect(canonical.artists).to eq(["Band One"])
+    expect(canonical.artists).to eq([ "Band One" ])
 
     synthetic = Album.find_by(master_id: 222)
     expect(synthetic.title).to eq("Obscure Pressing")

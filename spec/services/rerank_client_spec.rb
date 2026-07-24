@@ -1,8 +1,8 @@
 require "rails_helper"
 
 RSpec.describe RerankClient do
-  let(:album_a) { create(:album, :grounded, title: "A", artists: ["Artist A"], genres: ["Jazz"]) }
-  let(:album_b) { create(:album, :grounded, title: "B", artists: ["Artist B"], genres: ["Jazz"]) }
+  let(:album_a) { create(:album, :grounded, title: "A", artists: [ "Artist A" ], genres: [ "Jazz" ]) }
+  let(:album_b) { create(:album, :grounded, title: "B", artists: [ "Artist B" ], genres: [ "Jazz" ]) }
   let(:ranked_candidates) do
     [
       RankedCandidate::Ranked.new(album: album_a, blended_score: 0.2, affinity: 0.0, cooldown_penalty: 0.0, final_score: 0.8),
@@ -16,8 +16,8 @@ RSpec.describe RerankClient do
   def fake_response(rankings)
     schema = RerankClient::Schema.new(rankings: rankings)
     content_item = Struct.new(:type, :parsed).new(:output_text, schema)
-    output_item = Struct.new(:type, :content).new(:message, [content_item])
-    Struct.new(:output).new([output_item])
+    output_item = Struct.new(:type, :content).new(:message, [ content_item ])
+    Struct.new(:output).new([ output_item ])
   end
 
   it "returns candidates reordered and scored by the LLM" do
@@ -46,7 +46,7 @@ RSpec.describe RerankClient do
   end
 
   it "drops rankings for album ids not present in the ranked candidates" do
-    rankings = [RerankClient::Ranking.new(album_id: -1, rerank_score: 0.9, rationale: "unknown")]
+    rankings = [ RerankClient::Ranking.new(album_id: -1, rerank_score: 0.9, rationale: "unknown") ]
     allow(client).to receive_message_chain(:responses, :create).and_return(fake_response(rankings))
 
     result = rerank_client.rerank(query_text: "x", ranked_candidates: ranked_candidates)

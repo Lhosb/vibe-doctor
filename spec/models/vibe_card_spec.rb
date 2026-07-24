@@ -12,8 +12,8 @@ RSpec.describe VibeCard, type: :model do
   end
 
   it "stores array fields" do
-    card = VibeCard.create!(album: album, time_of_day: %w[evening], activities: ["winding down"])
+    card = VibeCard.create!(album: album, time_of_day: %w[evening], activities: [ "winding down" ])
     expect(card.reload.time_of_day).to eq(%w[evening])
-    expect(card.activities).to eq(["winding down"])
+    expect(card.activities).to eq([ "winding down" ])
   end
 end

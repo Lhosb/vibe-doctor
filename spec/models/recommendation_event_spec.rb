@@ -67,7 +67,7 @@ RSpec.describe RecommendationEvent do
       create(:recommendation_event, user: user, outcome: "good")
       create(:recommendation_event, user: other_user)
 
-      expect(described_class.pending_for(user)).to eq([older, newer])
+      expect(described_class.pending_for(user)).to eq([ older, newer ])
     end
   end
 end

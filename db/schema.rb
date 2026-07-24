@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_22_170000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_23_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -32,6 +32,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_170000) do
     t.datetime "created_at", null: false
     t.string "enrichment_status", default: "pending", null: false
     t.string "genres", default: [], null: false, array: true
+    t.datetime "last_enriched_at"
     t.bigint "master_id", null: false
     t.string "styles", default: [], null: false, array: true
     t.boolean "synthetic_master_id", default: false, null: false
@@ -39,6 +40,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_170000) do
     t.datetime "updated_at", null: false
     t.integer "year"
     t.string "youtube_url"
+    t.index ["last_enriched_at"], name: "index_albums_on_last_enriched_at"
     t.index ["master_id"], name: "index_albums_on_master_id", unique: true
   end
 

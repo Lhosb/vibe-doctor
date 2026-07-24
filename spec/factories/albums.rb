@@ -2,8 +2,8 @@ FactoryBot.define do
   factory :album do
     sequence(:master_id) { |n| n }
     title { "Sample Album" }
-    artists { ["Sample Artist"] }
-    genres { ["Jazz"] }
+    artists { [ "Sample Artist" ] }
+    genres { [ "Jazz" ] }
     styles { [] }
     year { 2020 }
 

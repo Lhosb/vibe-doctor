@@ -57,7 +57,7 @@ class VibeCardGenerator
   end
 
   def album_description(album)
-    parts = [album.title]
+    parts = [ album.title ]
     parts << "by #{album.artists.join(", ")}" if album.artists.present?
     parts << "(#{album.year})" if album.year.present?
     parts << "genres: #{album.genres.join(", ")}" if album.genres.present?

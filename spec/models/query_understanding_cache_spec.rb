@@ -9,7 +9,7 @@ RSpec.describe QueryUnderstandingCache do
           valence: 0.6, arousal: 0.3, danceability: 0.4, mood_acoustic: 0.7, mood_relaxed: 0.65, mood_happy: 0.55,
           mood_source: "llm_only"
         ),
-        genre: "Jazz", keywords: ["mellow"], embedding: Array.new(1536, 0.1)
+        genre: "Jazz", keywords: [ "mellow" ], embedding: Array.new(1536, 0.1)
       )
     end
 
