@@ -57,4 +57,45 @@ RSpec.describe "Vibe Map", type: :system, js: true do
 
     expect(VibeOverride.find_by(user: user, album: album)).to be_nil
   end
+
+  it "lists each distinct genre in the legend and hides that genre's points on click" do
+    rock_album = create(:album, :grounded, title: "Rock Album", genres: [ "Rock" ])
+    create(:mood_vector, album: rock_album, valence: 0.2, arousal: 0.8)
+    CollectionItem.create!(user: user, album: rock_album, release_id: 2)
+
+    visit vibe_map_path
+
+    expect(page).to have_text("Jazz")
+    expect(page).to have_text("Rock")
+
+    # both points are present and clickable before filtering
+    find_vibe_map_point(album, valence: 0.7, arousal: 0.3)
+    find_vibe_map_point(rock_album, valence: 0.2, arousal: 0.8)
+
+    all("text", text: "Rock").find { |el| el.text == "Rock" }.click # toggle the Rock series off via the legend
+
+    expect(page).to have_no_css("[data-album-id='#{rock_album.id}']", wait: 2)
+  end
+
+  it "rescales axes to the remaining points when a genre is filtered out via the legend" do
+    rock_album = create(:album, :grounded, title: "Rock Album", genres: [ "Rock" ])
+    create(:mood_vector, album: rock_album, valence: 0.2, arousal: 0.8)
+    CollectionItem.create!(user: user, album: rock_album, release_id: 2)
+
+    visit vibe_map_path
+
+    pixel_before = page.evaluate_script(<<~JS)
+      window.document.querySelector('[data-library-vibe-map-target="map"]')
+        .__echartsInstance.convertToPixel({xAxisIndex: 0, yAxisIndex: 0}, [0.7, 0.3])
+    JS
+
+    all("text", text: "Rock").find { |el| el.text == "Rock" }.click
+
+    pixel_after = page.evaluate_script(<<~JS)
+      window.document.querySelector('[data-library-vibe-map-target="map"]')
+        .__echartsInstance.convertToPixel({xAxisIndex: 0, yAxisIndex: 0}, [0.7, 0.3])
+    JS
+
+    expect(pixel_after).not_to eq(pixel_before)
+  end
 end
