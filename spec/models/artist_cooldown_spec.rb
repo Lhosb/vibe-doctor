@@ -15,13 +15,13 @@ RSpec.describe ArtistCooldown do
     end
 
     it "returns a positive penalty within the cooldown window" do
-      create(:artist_cooldown, user: user, artist_name: "Nas", last_recommended_at: 2.days.ago)
+      create(:artist_cooldown, user: user, artist_name: "Nas", last_recommended_at: described_class.clock.call - 2.days)
 
       expect(described_class.penalty_for(user: user, artist_name: "Nas")).to be_between(0.0, 0.5).exclusive
     end
 
     it "returns 0.0 once the cooldown window has passed" do
-      create(:artist_cooldown, user: user, artist_name: "Nas", last_recommended_at: 30.days.ago)
+      create(:artist_cooldown, user: user, artist_name: "Nas", last_recommended_at: described_class.clock.call - 30.days)
 
       expect(described_class.penalty_for(user: user, artist_name: "Nas")).to eq(0.0)
     end
