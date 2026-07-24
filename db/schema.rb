@@ -32,7 +32,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_24_002528) do
     t.datetime "created_at", null: false
     t.string "enrichment_status", default: "pending", null: false
     t.string "genres", default: [], null: false, array: true
-    t.datetime "last_enriched_at"
     t.bigint "master_id", null: false
     t.string "styles", default: [], null: false, array: true
     t.boolean "synthetic_master_id", default: false, null: false
@@ -40,7 +39,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_24_002528) do
     t.datetime "updated_at", null: false
     t.integer "year"
     t.string "youtube_url"
-    t.index ["last_enriched_at"], name: "index_albums_on_last_enriched_at"
     t.index ["master_id"], name: "index_albums_on_master_id", unique: true
   end
 
