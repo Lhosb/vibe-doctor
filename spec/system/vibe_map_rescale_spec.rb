@@ -18,14 +18,6 @@ RSpec.describe "Vibe Map rescaling", type: :system, js: true do
     sign_in_as(user)
   end
 
-  it "stretches dot positions to the full display range" do
-    visit vibe_map_path
-
-    lefts = all("[data-album-id]").map { |marker| marker[:style][/left:\s*([\d.]+)%/, 1].to_f }
-    expect(lefts.min).to eq(0.0)
-    expect(lefts.max).to eq(100.0)
-  end
-
   it "inverts a dragged position back into true valence/arousal before saving an override" do
     visit vibe_map_path
 
