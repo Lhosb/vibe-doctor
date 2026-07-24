@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_22_170000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_24_002528) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -32,6 +32,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_170000) do
     t.datetime "created_at", null: false
     t.string "enrichment_status", default: "pending", null: false
     t.string "genres", default: [], null: false, array: true
+    t.datetime "last_enriched_at"
     t.bigint "master_id", null: false
     t.string "styles", default: [], null: false, array: true
     t.boolean "synthetic_master_id", default: false, null: false
@@ -39,6 +40,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_170000) do
     t.datetime "updated_at", null: false
     t.integer "year"
     t.string "youtube_url"
+    t.index ["last_enriched_at"], name: "index_albums_on_last_enriched_at"
     t.index ["master_id"], name: "index_albums_on_master_id", unique: true
   end
 
@@ -72,6 +74,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_170000) do
     t.vector "sonic", limit: 1536
     t.datetime "updated_at", null: false
     t.index ["album_id"], name: "index_embeddings_on_album_id", unique: true
+  end
+
+  create_table "invitations", force: :cascade do |t|
+    t.datetime "accepted_at"
+    t.datetime "created_at", null: false
+    t.string "email", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "invited_by_id", null: false
+    t.datetime "revoked_at"
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_invitations_on_email"
+    t.index ["invited_by_id"], name: "index_invitations_on_invited_by_id"
+    t.index ["token"], name: "index_invitations_on_token", unique: true
   end
 
   create_table "mood_vectors", force: :cascade do |t|
@@ -183,6 +199,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_170000) do
   add_foreign_key "collection_items", "albums"
   add_foreign_key "collection_items", "users"
   add_foreign_key "embeddings", "albums"
+  add_foreign_key "invitations", "users", column: "invited_by_id"
   add_foreign_key "mood_vectors", "albums"
   add_foreign_key "recommendation_events", "albums"
   add_foreign_key "recommendation_events", "users"
