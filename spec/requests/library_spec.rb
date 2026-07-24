@@ -31,4 +31,17 @@ RSpec.describe "GET /library", type: :request do
 
     expect(response.body).to include("Connect Discogs")
   end
+
+  it "shows a Vibe Map nav link positioned between Library and Feedback" do
+    get "/library"
+
+    body = response.body
+    library_link_index = body.index(%(href="/library"))
+    vibe_map_link_index = body.index(%(href="/vibe_map"))
+    feedback_link_index = body.index(%(href="/feedback"))
+
+    expect(vibe_map_link_index).to be_present
+    expect(library_link_index).to be < vibe_map_link_index
+    expect(vibe_map_link_index).to be < feedback_link_index
+  end
 end
