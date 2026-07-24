@@ -1,8 +1,11 @@
 class EnrichAlbumJob < ApplicationJob
   queue_as :default
 
-  def perform(album, mood_grounder: MoodGroundingService.new, vibe_card_generator: VibeCardGenerator.new,
-              embedding_service: AlbumEmbeddingService.new)
+  def perform(album, mood_grounder: nil, vibe_card_generator: nil, embedding_service: nil)
+    mood_grounder ||= MoodGroundingService.new
+    vibe_card_generator ||= VibeCardGenerator.new
+    embedding_service ||= AlbumEmbeddingService.new
+
     album.start_matching!
 
     extraction_started = false

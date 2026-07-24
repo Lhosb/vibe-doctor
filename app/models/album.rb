@@ -21,6 +21,8 @@ class Album < ApplicationRecord
 
   enum :enrichment_status, ENRICHMENT_TRANSITIONS.keys.index_by(&:itself), default: "pending", validate: true
 
+  scope :needing_enrichment, -> { where(enrichment_status: %w[pending failed]) }
+
   validates :master_id, presence: true, uniqueness: true
   validates :title, presence: true
 

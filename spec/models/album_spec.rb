@@ -31,4 +31,16 @@ RSpec.describe Album, type: :model do
     album = Album.create!(master_id: 1, title: "Nevermind")
     expect { album.ground! }.to raise_error(Album::InvalidTransition, "cannot transition to grounded from pending")
   end
+
+  describe ".needing_enrichment" do
+    it "includes pending and failed albums but not albums mid-flight or grounded" do
+      pending = Album.create!(master_id: 1, title: "Pending")
+      failed = Album.create!(master_id: 2, title: "Failed").tap(&:start_matching!).tap(&:fail_enrichment!)
+      matching = Album.create!(master_id: 3, title: "Matching").tap(&:start_matching!)
+      grounded = Album.create!(master_id: 4, title: "Grounded").tap(&:start_matching!).tap(&:start_extracting!).tap(&:ground!)
+
+      expect(Album.needing_enrichment).to contain_exactly(pending, failed)
+      expect(Album.needing_enrichment).not_to include(matching, grounded)
+    end
+  end
 end

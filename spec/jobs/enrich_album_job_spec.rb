@@ -85,4 +85,11 @@ RSpec.describe EnrichAlbumJob, type: :job do
     expect { perform }.to raise_error(StandardError, "OpenAI is down")
     expect(album.reload).to be_failed
   end
+
+  it "marks the album failed even when building a default service raises, instead of leaving it stuck pending" do
+    allow(VibeCardGenerator).to receive(:new).and_raise(KeyError, 'key not found: "OPENAI_API_KEY"')
+
+    expect { described_class.new.perform(album) }.to raise_error(KeyError)
+    expect(album.reload).to be_failed
+  end
 end
