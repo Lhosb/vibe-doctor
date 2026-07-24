@@ -27,4 +27,15 @@ RSpec.describe "Discogs connection settings", type: :request do
       expect(user.discogs_token).to eq("new-token")
     end
   end
+
+  describe "POST /discogs_connection/resync" do
+    it "enqueues a sync job for the current user without requiring credentials" do
+      expect {
+        post resync_discogs_connection_path
+      }.to have_enqueued_job(SyncDiscogsCollectionJob).with(user)
+
+      expect(response).to redirect_to(library_path)
+      expect(flash[:notice]).to eq("Discogs sync started.")
+    end
+  end
 end
