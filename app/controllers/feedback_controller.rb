@@ -1,6 +1,6 @@
 class FeedbackController < ApplicationController
   def index
-    @event = RecommendationEvent.pending_for(current_user).first
+    @event = pending_event_for(params[:recommendation_event_id])
   end
 
   def create
@@ -16,5 +16,14 @@ class FeedbackController < ApplicationController
     head :not_found
   rescue RecommendationEvent::InvalidOutcomeTransitionError, ActionController::ParameterMissing
     head :unprocessable_content
+  end
+
+  private
+
+  def pending_event_for(id)
+    return RecommendationEvent.pending_for(current_user).first if id.blank?
+
+    current_user.recommendation_events.pending.find_by(id: id) ||
+      RecommendationEvent.pending_for(current_user).first
   end
 end

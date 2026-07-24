@@ -20,6 +20,37 @@ RSpec.describe "GET /feedback", type: :request do
 
     expect(response.body).to include("You're all caught up!")
   end
+
+  it "shows the requested event when it belongs to the current user and is still pending" do
+    create(:recommendation_event, user: user, album: create(:album, title: "Older Album"), outcome: "pending")
+    target_event = create(:recommendation_event, user: user, album: create(:album, title: "Target Album"), outcome: "pending")
+
+    get "/feedback", params: { recommendation_event_id: target_event.id }
+
+    expect(response.body).to include("Target Album")
+    expect(response.body).not_to include("Older Album")
+  end
+
+  it "falls back to the oldest pending event for another user's event id" do
+    create(:recommendation_event, user: user, album: create(:album, title: "Own Album"), outcome: "pending")
+    other_user = create(:user)
+    other_event = create(:recommendation_event, user: other_user, album: create(:album, title: "Other Album"), outcome: "pending")
+
+    get "/feedback", params: { recommendation_event_id: other_event.id }
+
+    expect(response.body).to include("Own Album")
+    expect(response.body).not_to include("Other Album")
+  end
+
+  it "falls back to the oldest pending event for an already-actioned event id" do
+    create(:recommendation_event, user: user, album: create(:album, title: "Own Album"), outcome: "pending")
+    actioned_event = create(:recommendation_event, user: user, album: create(:album, title: "Actioned Album"), outcome: "good")
+
+    get "/feedback", params: { recommendation_event_id: actioned_event.id }
+
+    expect(response.body).to include("Own Album")
+    expect(response.body).not_to include("Actioned Album")
+  end
 end
 
 RSpec.describe "POST /feedback", type: :request do
