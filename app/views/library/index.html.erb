@@ -1,3 +1,7 @@
+<% if notice = flash[:notice] %>
+  <p class="py-2 px-3 bg-green-50 mb-5 text-green-500 font-medium rounded-lg inline-block" id="notice"><%= notice %></p>
+<% end %>
+
 <h1 class="text-2xl font-bold mb-4">Library</h1>
 
 <% if Current.user.discogs_username.blank? %>
