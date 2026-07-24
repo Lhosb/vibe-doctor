@@ -1,14 +1,37 @@
-<h1 class="text-2xl font-bold">Library</h1>
-<p>Signed in as <%= Current.user.email_address %></p>
+<h1 class="text-2xl font-bold mb-4">Library</h1>
 
 <% if Current.user.discogs_username.blank? %>
   <%= link_to "Connect Discogs", new_discogs_connection_path, class: "text-blue-600 underline" %>
 <% else %>
-  <ul>
-    <% @collection_items.each do |item| %>
-      <li><%= item.album.title %> &mdash; <%= item.album.artists.join(", ") %></li>
-    <% end %>
-  </ul>
+  <table class="w-full text-left text-sm">
+    <thead>
+      <tr class="border-b border-gray-200">
+        <th class="py-2 pr-4">Title</th>
+        <th class="py-2 pr-4">Artists</th>
+        <th class="py-2 pr-4">Year</th>
+        <th class="py-2 pr-4">Genres</th>
+        <th class="py-2 pr-4">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @collection_items.each do |item| %>
+        <% album = item.album %>
+        <tr class="border-b border-gray-100">
+          <td class="py-2 pr-4"><%= link_to album.title, album_path(album), class: "text-blue-600 underline" %></td>
+          <td class="py-2 pr-4"><%= album.artists.join(", ") %></td>
+          <td class="py-2 pr-4"><%= album.year %></td>
+          <td class="py-2 pr-4">
+            <% album.genres.each do |genre| %>
+              <span class="inline-block px-2 py-0.5 mr-1 mb-1 rounded-full bg-gray-100 text-gray-700 text-xs"><%= genre %></span>
+            <% end %>
+          </td>
+          <td class="py-2 pr-4">
+            <span class="<%= status_badge_class(album.enrichment_status) %> px-2 py-0.5 rounded-full text-xs">
+              <%= album.enrichment_status.titleize %>
+            </span>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
 <% end %>
-
-<%= button_to "Log out", session_path, method: :delete %>
