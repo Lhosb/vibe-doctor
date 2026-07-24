@@ -46,15 +46,17 @@ export default class extends Controller {
       yAxis: { scale: true },
       // `containLabel: true` lets ECharts grow the grid to fit whatever tick
       // labels actually render, instead of hand-tuned left/right/bottom
-      // offsets that only happen to fit today's label widths. `top` is a
-      // fixed px value (not a fit-to-content one) because it exists purely to
-      // clear the legend row above -- a legend's height comes from its font
-      // size, not the container's width, so it doesn't scale with the chart.
-      grid: { top: 40, containLabel: true },
+      // offsets that only happen to fit today's label widths. Left/top/bottom
+      // are small fixed starting insets (not fit-to-content ones): ECharts
+      // defaults any unset side to 10% of the container, which -- stacked on
+      // top of containLabel's own padding -- left far more empty margin than
+      // the tick labels actually need. `bottom` stays larger than left/top
+      // purely to clear the legend row below (a fixed-height row, not
+      // something that scales with the container).
+      grid: { left: 8, top: 16, bottom: 48, containLabel: true },
       legend: {
         data: this.genres,
         type: "scroll",
-        top: 0,
         selector: [
           {
             type: "all",
