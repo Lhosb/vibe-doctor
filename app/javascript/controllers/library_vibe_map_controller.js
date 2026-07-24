@@ -4,6 +4,12 @@ const DRAG_THRESHOLD_PX = 4
 
 export default class extends Controller {
   static targets = ["map"]
+  static values = {
+    valenceMin: Number,
+    valenceMax: Number,
+    arousalMin: Number,
+    arousalMax: Number
+  }
 
   connect() {
     this.boundMouseMove = this.onMouseMove.bind(this)
@@ -48,8 +54,15 @@ export default class extends Controller {
 
     this.dragging.dot.style.left = `${x * 100}%`
     this.dragging.dot.style.top = `${y * 100}%`
-    this.dragging.valence = x
-    this.dragging.arousal = 1 - y
+    this.dragging.valence = this.invert(x, this.valenceMinValue, this.valenceMaxValue)
+    this.dragging.arousal = this.invert(1 - y, this.arousalMinValue, this.arousalMaxValue)
+  }
+
+  invert(displayFraction, min, max) {
+    if (min === max) return displayFraction
+
+    const value = min + displayFraction * (max - min)
+    return Math.min(Math.max(value, 0), 1)
   }
 
   onMouseUp() {
