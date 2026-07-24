@@ -11,4 +11,8 @@ class MoodVector < ApplicationRecord
   def distance_to(other)
     Math.sqrt(MOOD_HEADS.sum { |head| (send(head) - other.send(head))**2 })
   end
+
+  def vibe_phrase(genre: nil)
+    MoodVectors::VibePhraseBuilder.new(self, genre: genre).call
+  end
 end

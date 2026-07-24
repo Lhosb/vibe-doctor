@@ -22,4 +22,9 @@ RSpec.describe MoodVector, type: :model do
     expect(mood_vector).not_to be_valid
     expect(mood_vector.errors[:valence]).to be_present
   end
+
+  it "delegates vibe_phrase to MoodVectors::VibePhraseBuilder" do
+    mood_vector = MoodVector.new(album: album, valence: 0.2, arousal: 0.35, mood_happy: 0.1)
+    expect(mood_vector.vibe_phrase(genre: "Jazz")).to eq("brooding somber — Jazz")
+  end
 end
