@@ -3,7 +3,7 @@ Rails.application.routes.draw do
   root "library#index"
   get "library" => "library#index", as: :library
   get "vibe_map" => "vibe_map#index", as: :vibe_map
-  resource :discogs_connection, only: %i[new create]
+  resource :discogs_connection, only: %i[edit update]
   resource :session
   resources :passwords, param: :token
   resources :registrations, param: :token, only: [:edit, :update]

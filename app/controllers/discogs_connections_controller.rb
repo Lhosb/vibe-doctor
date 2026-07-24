@@ -1,10 +1,16 @@
 class DiscogsConnectionsController < ApplicationController
-  def new
+  def edit
   end
 
-  def create
-    Current.user.update!(params.permit(:discogs_username, :discogs_token))
+  def update
+    Current.user.update!(discogs_connection_params)
     SyncDiscogsCollectionJob.perform_later(Current.user)
     redirect_to library_path, notice: "Discogs sync started."
+  end
+
+  private
+
+  def discogs_connection_params
+    params.permit(:discogs_username, :discogs_token)
   end
 end
