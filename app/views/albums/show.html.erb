@@ -11,3 +11,21 @@
 </div>
 
 <%= render "albums/vibe_map", album: @album, mood: @vibe_mood %>
+
+<% if @vibe_mood %>
+  <div class="mt-6 max-w-md">
+    <h2 class="text-lg font-semibold mb-2">Mood breakdown</h2>
+    <% MoodVector::MOOD_HEADS.each do |head| %>
+      <% value = @vibe_mood.public_send(head) %>
+      <div class="mb-2">
+        <div class="flex justify-between text-xs text-gray-500 mb-0.5">
+          <span><%= head.to_s.humanize %></span>
+          <span><%= value.round(2) %></span>
+        </div>
+        <div class="w-full h-1.5 bg-gray-100 rounded-full">
+          <div class="h-1.5 bg-indigo-600 rounded-full" style="width: <%= (value * 100).round(1) %>%"></div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>
