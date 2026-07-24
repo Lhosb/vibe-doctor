@@ -65,4 +65,22 @@ RSpec.describe "GET /albums/:id", type: :request do
 
     expect(response.body).not_to include("Vibe card")
   end
+
+  it "shows the numeric valence/arousal coordinates on the per-album map" do
+    album = create(:album, :grounded)
+    create(:mood_vector, album: album, valence: 0.62, arousal: 0.41)
+
+    get album_path(album)
+
+    expect(response.body).to include("Valence 0.62")
+    expect(response.body).to include("Arousal 0.41")
+  end
+
+  it "omits coordinates when the album has no mood data" do
+    album = create(:album)
+
+    get album_path(album)
+
+    expect(response.body).not_to include("Valence")
+  end
 end

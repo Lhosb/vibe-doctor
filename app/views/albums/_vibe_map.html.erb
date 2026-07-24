@@ -22,5 +22,10 @@
       <span>Sad</span>
       <span>Happy</span>
     </div>
+    <% if mood %>
+      <p class="text-xs text-gray-500 mt-1">
+        Valence <%= mood.valence.round(2) %> · Arousal <%= mood.arousal.round(2) %>
+      </p>
+    <% end %>
   </div>
 </div>
