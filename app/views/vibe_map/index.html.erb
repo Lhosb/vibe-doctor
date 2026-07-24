@@ -1,24 +1,36 @@
 <h1 class="text-2xl font-bold mb-4">Vibe Map</h1>
 
-<div
-  data-controller="library-vibe-map"
-  data-library-vibe-map-target="map"
-  class="vibe-map-canvas relative w-full max-w-3xl aspect-square border border-gray-300 rounded-lg bg-gray-50"
->
-  <% @dots.each do |dot| %>
+<div class="max-w-3xl flex gap-2">
+  <div class="flex flex-col justify-between text-xs font-medium text-gray-400 uppercase tracking-wide shrink-0 py-1">
+    <span>Energetic</span>
+    <span>Calm</span>
+  </div>
+  <div class="flex-1">
     <div
-      class="vibe-map-dot absolute w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-600 cursor-pointer hover:ring-2 hover:ring-indigo-300"
-      style="left: <%= (dot.valence * 100).round(2) %>%; top: <%= ((1 - dot.arousal) * 100).round(2) %>%;"
-      title="<%= dot.phrase %>"
-      tabindex="0"
-      data-action="mousedown->library-vibe-map#dotMouseDown"
-      data-href="<%= album_path(dot.album) %>"
-      data-album-id="<%= dot.album.id %>"
-      data-genre="<%= dot.album.genres.first %>"
-      data-danceability="<%= dot.danceability %>"
-      data-mood-acoustic="<%= dot.mood_acoustic %>"
-      data-mood-relaxed="<%= dot.mood_relaxed %>"
-      data-mood-happy="<%= dot.mood_happy %>"
-    ></div>
-  <% end %>
+      data-controller="library-vibe-map"
+      data-library-vibe-map-target="map"
+      class="vibe-map-canvas relative w-full aspect-square border border-gray-300 rounded-lg bg-gray-50"
+    >
+      <% @dots.each do |dot| %>
+        <div
+          class="vibe-map-dot absolute w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-600 cursor-pointer hover:ring-2 hover:ring-indigo-300"
+          style="left: <%= (dot.valence * 100).round(2) %>%; top: <%= ((1 - dot.arousal) * 100).round(2) %>%;"
+          title="<%= dot.phrase %>"
+          tabindex="0"
+          data-action="mousedown->library-vibe-map#dotMouseDown"
+          data-href="<%= album_path(dot.album) %>"
+          data-album-id="<%= dot.album.id %>"
+          data-genre="<%= dot.album.genres.first %>"
+          data-danceability="<%= dot.danceability %>"
+          data-mood-acoustic="<%= dot.mood_acoustic %>"
+          data-mood-relaxed="<%= dot.mood_relaxed %>"
+          data-mood-happy="<%= dot.mood_happy %>"
+        ></div>
+      <% end %>
+    </div>
+    <div class="flex justify-between text-xs font-medium text-gray-400 uppercase tracking-wide mt-1">
+      <span>Sad</span>
+      <span>Happy</span>
+    </div>
+  </div>
 </div>

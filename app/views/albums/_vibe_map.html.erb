@@ -1,14 +1,26 @@
-<div
-  data-controller="vibe-map"
-  data-vibe-map-album-id-value="<%= album.id %>"
-  data-vibe-map-genre-value="<%= album.genres.first %>"
-  data-action="click->vibe-map#place"
-  class="vibe-map"
-  style="position: relative; width: 300px; height: 300px; border: 1px solid #ccc;"
->
-  <div
-    class="vibe-map__marker"
-    data-vibe-map-target="marker"
-    style="position: absolute; transform: translate(-50%, -50%); width: 8px; height: 8px; border-radius: 9999px; background: #111;"
-  ></div>
+<div class="flex gap-2">
+  <div class="flex flex-col justify-between text-xs font-medium text-gray-400 uppercase tracking-wide shrink-0 py-1">
+    <span>Energetic</span>
+    <span>Calm</span>
+  </div>
+  <div>
+    <div
+      data-controller="vibe-map"
+      data-vibe-map-album-id-value="<%= album.id %>"
+      data-vibe-map-genre-value="<%= album.genres.first %>"
+      data-action="click->vibe-map#place"
+      class="vibe-map"
+      style="position: relative; width: 300px; height: 300px; border: 1px solid #ccc;"
+    >
+      <div
+        class="vibe-map__marker"
+        data-vibe-map-target="marker"
+        style="position: absolute; transform: translate(-50%, -50%); width: 8px; height: 8px; border-radius: 9999px; background: #111;<% if mood %> left: <%= (mood.valence * 100).round(2) %>%; top: <%= ((1 - mood.arousal) * 100).round(2) %>%;<% end %>"
+      ></div>
+    </div>
+    <div class="flex justify-between w-75 text-xs font-medium text-gray-400 uppercase tracking-wide mt-1">
+      <span>Sad</span>
+      <span>Happy</span>
+    </div>
+  </div>
 </div>
