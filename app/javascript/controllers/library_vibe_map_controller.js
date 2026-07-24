@@ -36,6 +36,10 @@ export default class extends Controller {
       yAxis: { scale: true, name: "Calm ↔ Energetic", nameLocation: "middle", nameGap: 32 },
       grid: { left: 48, right: 24, top: 24, bottom: 56 },
       legend: { data: this.genres, bottom: 8 },
+      dataZoom: [
+        { type: "inside", xAxisIndex: 0 },
+        { type: "inside", yAxisIndex: 0 }
+      ],
       tooltip: {
         trigger: "item",
         formatter: (params) => params.data.dot.phrase
@@ -66,10 +70,15 @@ export default class extends Controller {
       startX: params.event.event.clientX,
       startY: params.event.event.clientY
     }
+    // Registered on the capture phase: with dataZoom's "inside" roam active,
+    // its own internal drag tracking can stop these events from ever
+    // reaching bubble-phase document listeners (confirmed via a live spike).
+    // Capture-phase listeners at document run first regardless, so this
+    // guarantees our own drag tracking still sees every move/up.
     this.boundMove = this.onDocumentMouseMove.bind(this)
     this.boundUp = this.onDocumentMouseUp.bind(this)
-    document.addEventListener("mousemove", this.boundMove)
-    document.addEventListener("mouseup", this.boundUp)
+    document.addEventListener("mousemove", this.boundMove, true)
+    document.addEventListener("mouseup", this.boundUp, true)
   }
 
   onDocumentMouseMove(event) {
@@ -79,16 +88,37 @@ export default class extends Controller {
     const dy = event.clientY - this.dragging.startY
     if (!this.dragging.moved && Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) {
       this.dragging.moved = true
+
+      // Disabling dataZoom must wait until a real drag is confirmed (not on
+      // every mousedown): calling chart.setOption -- even for this unrelated
+      // option -- resets ECharts' internal pending-click gesture tracking, so
+      // doing it unconditionally on mousedown silently swallows plain clicks
+      // (confirmed via a live spike: chart.on("click", ...) never fires at
+      // all afterward). Deferring it to here means a plain click never
+      // touches setOption at all.
+      this.chart.setOption({
+        dataZoom: [
+          { type: "inside", xAxisIndex: 0, disabled: true },
+          { type: "inside", yAxisIndex: 0, disabled: true }
+        ]
+      })
     }
   }
 
   onDocumentMouseUp(event) {
-    document.removeEventListener("mousemove", this.boundMove)
-    document.removeEventListener("mouseup", this.boundUp)
+    document.removeEventListener("mousemove", this.boundMove, true)
+    document.removeEventListener("mouseup", this.boundUp, true)
 
     const state = this.dragging
     this.dragging = null
     if (!state || !state.moved) return
+
+    this.chart.setOption({
+      dataZoom: [
+        { type: "inside", xAxisIndex: 0, disabled: false },
+        { type: "inside", yAxisIndex: 0, disabled: false }
+      ]
+    })
 
     this.suppressNextClick = true
 

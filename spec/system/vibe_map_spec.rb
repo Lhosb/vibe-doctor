@@ -38,4 +38,23 @@ RSpec.describe "Vibe Map", type: :system, js: true do
     expect(override.mood_relaxed).to eq(0.1)
     expect(override.mood_happy).to eq(0.8)
   end
+
+  it "still overrides (not pans) when dragging a point with zoom/pan enabled" do
+    visit vibe_map_path
+
+    point = find_vibe_map_point(album, valence: 0.7, arousal: 0.3)
+    point.drag_to(find('[data-library-vibe-map-target="map"]'))
+
+    expect(page).to have_css("[data-saved-album-id='#{album.id}']")
+    expect(VibeOverride.find_by(user: user, album: album)).to be_present
+  end
+
+  it "does not create an override when dragging on empty canvas (pan, not point-drag)" do
+    visit vibe_map_path
+
+    canvas = find('[data-library-vibe-map-target="map"]')
+    canvas.drag_to(canvas) # drag from/to the same empty-canvas element -- not a data point
+
+    expect(VibeOverride.find_by(user: user, album: album)).to be_nil
+  end
 end
