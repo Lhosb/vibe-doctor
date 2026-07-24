@@ -6,6 +6,10 @@ namespace :madmin, path: "admin" do
   resources :recommendation_events
   resources :sessions
   resources :users
+  resources :invitations do
+    post :regenerate_link, on: :member
+    post :revoke, on: :member
+  end
   resources :vibe_cards
   resources :vibe_overrides
   resources :artist_cooldowns

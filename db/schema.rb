@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_23_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_24_002528) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -74,6 +74,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_090000) do
     t.vector "sonic", limit: 1536
     t.datetime "updated_at", null: false
     t.index ["album_id"], name: "index_embeddings_on_album_id", unique: true
+  end
+
+  create_table "invitations", force: :cascade do |t|
+    t.datetime "accepted_at"
+    t.datetime "created_at", null: false
+    t.string "email", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "invited_by_id", null: false
+    t.datetime "revoked_at"
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_invitations_on_email"
+    t.index ["invited_by_id"], name: "index_invitations_on_invited_by_id"
+    t.index ["token"], name: "index_invitations_on_token", unique: true
   end
 
   create_table "mood_vectors", force: :cascade do |t|
@@ -185,6 +199,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_090000) do
   add_foreign_key "collection_items", "albums"
   add_foreign_key "collection_items", "users"
   add_foreign_key "embeddings", "albums"
+  add_foreign_key "invitations", "users", column: "invited_by_id"
   add_foreign_key "mood_vectors", "albums"
   add_foreign_key "recommendation_events", "albums"
   add_foreign_key "recommendation_events", "users"

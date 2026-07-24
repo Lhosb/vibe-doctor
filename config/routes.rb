@@ -5,6 +5,7 @@ Rails.application.routes.draw do
   resource :discogs_connection, only: %i[new create]
   resource :session
   resources :passwords, param: :token
+  resources :registrations, param: :token, only: [:edit, :update]
   get "/feedback", to: "feedback#index"
   post "/feedback", to: "feedback#create"
   post "/recommend", to: "recommendations#create"
