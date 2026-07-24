@@ -2,7 +2,7 @@ require "rails_helper"
 require "rake"
 
 RSpec.describe "enrichment:backfill rake task" do
-  before(:all) { Rails.application.load_tasks }
+  before(:all) { Rails.application.load_tasks unless Rake::Task.task_defined?("enrichment:backfill") }
   after { Rake::Task["enrichment:backfill"].reenable }
 
   it "synchronously enriches every album needing enrichment and skips ones that don't" do
@@ -46,5 +46,23 @@ RSpec.describe "enrichment:backfill rake task" do
     expect(Rails.logger).to have_received(:error).with(/Album #{broken.id} \(Broken\) failed: boom/)
     expect(Rails.logger).to have_received(:info).with(/2 albums processed: 1 succeeded, 1 failed/)
     expect(EnrichAlbumJob).to have_received(:perform_now).with(ok)
+  end
+end
+
+RSpec.describe "enrichment:reground_all rake task" do
+  before(:all) { Rails.application.load_tasks unless Rake::Task.task_defined?("enrichment:reground_all") }
+  after { Rake::Task["enrichment:reground_all"].reenable }
+
+  it "resets every album to pending and re-enriches all of them, including already-grounded ones" do
+    grounded = Album.create!(master_id: 1, title: "Grounded").tap(&:start_matching!).tap(&:start_extracting!).tap(&:ground!)
+    pending = Album.create!(master_id: 2, title: "Pending")
+
+    allow(EnrichAlbumJob).to receive(:perform_now)
+
+    Rake::Task["enrichment:reground_all"].invoke
+
+    expect(grounded.reload).to be_pending
+    expect(EnrichAlbumJob).to have_received(:perform_now).with(grounded).once
+    expect(EnrichAlbumJob).to have_received(:perform_now).with(pending).once
   end
 end

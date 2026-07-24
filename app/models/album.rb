@@ -42,6 +42,13 @@ class Album < ApplicationRecord
     transition_to!("failed")
   end
 
+  # Bypasses ENRICHMENT_TRANSITIONS on purpose: forces a "grounded" album back through
+  # enrichment, for cases where grounding previously succeeded via the llm_only fallback
+  # without ever actually running essentia.
+  def reset_enrichment!
+    update!(enrichment_status: "pending")
+  end
+
   def repair_youtube_link!(url)
     raise InvalidYoutubeLinkError, "url must be a youtube.com or youtu.be link" unless url.match?(YOUTUBE_URL_PATTERN)
 
