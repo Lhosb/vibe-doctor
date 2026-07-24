@@ -3,12 +3,13 @@ Rails.application.routes.draw do
   root "library#index"
   get "library" => "library#index", as: :library
   get "vibe_map" => "vibe_map#index", as: :vibe_map
+  get "vibe_map/global" => "vibe_map#global", as: :global_vibe_map
   resource :discogs_connection, only: %i[edit update] do
     post :resync, on: :collection
   end
   resource :session
   resources :passwords, param: :token
-  resources :registrations, param: :token, only: [:edit, :update]
+  resources :registrations, param: :token, only: [ :edit, :update ]
   get "/feedback", to: "feedback#index"
   post "/feedback", to: "feedback#create"
   get "/recommend", to: "recommend#index", as: :recommend

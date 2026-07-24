@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe RecommendationPipeline do
+RSpec.describe Recommendations::Pipeline do
   let(:user) { create(:user) }
   let(:album) { create(:album, :grounded, artists: [ "Artist A" ], genres: [ "Jazz" ]) }
 
@@ -16,8 +16,8 @@ RSpec.describe RecommendationPipeline do
         genre: "Jazz"
       )
     )
-    allow(CandidateRetrieval).to receive(:new).and_return(
-      instance_double(CandidateRetrieval, call: [ CandidateRetrieval::Candidate.new(album: album, blended_score: 0.2) ])
+    allow(Recommendations::CandidateRetrieval).to receive(:new).and_return(
+      instance_double(Recommendations::CandidateRetrieval, call: [ Recommendations::CandidateRetrieval::Candidate.new(album: album, blended_score: 0.2) ])
     )
     allow(RerankClient).to receive(:new).and_return(
       instance_double(RerankClient, rerank: [ { album: album, rerank_score: 0.9, rationale: "warm and mellow" } ])
@@ -48,8 +48,8 @@ RSpec.describe RecommendationPipeline do
 
   it "records cooldown for every credited artist on a multi-artist album" do
     collab_album = create(:album, :grounded, artists: [ "Artist A", "Artist B" ])
-    allow(CandidateRetrieval).to receive(:new).and_return(
-      instance_double(CandidateRetrieval, call: [ CandidateRetrieval::Candidate.new(album: collab_album, blended_score: 0.2) ])
+    allow(Recommendations::CandidateRetrieval).to receive(:new).and_return(
+      instance_double(Recommendations::CandidateRetrieval, call: [ Recommendations::CandidateRetrieval::Candidate.new(album: collab_album, blended_score: 0.2) ])
     )
     allow(RerankClient).to receive(:new).and_return(
       instance_double(RerankClient, rerank: [ { album: collab_album, rerank_score: 0.9, rationale: "warm and mellow" } ])
@@ -62,9 +62,9 @@ RSpec.describe RecommendationPipeline do
   end
 
   it "raises NoCandidatesError when admission yields nothing" do
-    allow(CandidateRetrieval).to receive(:new).and_return(instance_double(CandidateRetrieval, call: []))
+    allow(Recommendations::CandidateRetrieval).to receive(:new).and_return(instance_double(Recommendations::CandidateRetrieval, call: []))
 
     expect { described_class.new(user: user, query_text: "warm sunday jazz").call }
-      .to raise_error(RecommendationPipeline::NoCandidatesError)
+      .to raise_error(Recommendations::Pipeline::NoCandidatesError)
   end
 end

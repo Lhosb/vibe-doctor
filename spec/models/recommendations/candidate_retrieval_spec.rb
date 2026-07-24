@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe CandidateRetrieval do
+RSpec.describe Recommendations::CandidateRetrieval do
   let(:query_mood) do
     MoodVector.new(
       valence: 0.6, arousal: 0.3, danceability: 0.4, mood_acoustic: 0.7, mood_relaxed: 0.65, mood_happy: 0.55,

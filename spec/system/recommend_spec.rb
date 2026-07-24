@@ -8,9 +8,9 @@ RSpec.describe "Recommend page", type: :system, js: true do
 
   it "recommends an album and links to giving feedback on it" do
     event = create(:recommendation_event, user: user, album: album, explanation: "warm and mellow", outcome: "pending")
-    result = RecommendationPipeline::Result.new(album: album, explanation: "warm and mellow", recommendation_event: event)
-    pipeline = instance_double(RecommendationPipeline, call: result)
-    allow(RecommendationPipeline).to receive(:new)
+    result = Recommendations::Pipeline::Result.new(album: album, explanation: "warm and mellow", recommendation_event: event)
+    pipeline = instance_double(Recommendations::Pipeline, call: result)
+    allow(Recommendations::Pipeline).to receive(:new)
       .with(user: user, query_text: "warm sunday jazz", genre: nil)
       .and_return(pipeline)
 
@@ -29,10 +29,10 @@ RSpec.describe "Recommend page", type: :system, js: true do
   end
 
   it "shows an inline error when no candidates are admitted" do
-    pipeline = instance_double(RecommendationPipeline)
-    allow(RecommendationPipeline).to receive(:new).and_return(pipeline)
+    pipeline = instance_double(Recommendations::Pipeline)
+    allow(Recommendations::Pipeline).to receive(:new).and_return(pipeline)
     allow(pipeline).to receive(:call)
-      .and_raise(RecommendationPipeline::NoCandidatesError, "no albums matched the query")
+      .and_raise(Recommendations::Pipeline::NoCandidatesError, "no albums matched the query")
 
     visit "/recommend"
     fill_in "What are you in the mood for?", with: "obscure vibe"

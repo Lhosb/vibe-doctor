@@ -1,6 +1,6 @@
 class RecommendationsController < ApplicationController
   def create
-    result = RecommendationPipeline.new(
+    result = Recommendations::Pipeline.new(
       user: Current.user,
       query_text: params.require(:query),
       genre: params[:genre]
@@ -16,7 +16,7 @@ class RecommendationsController < ApplicationController
       },
       explanation: result.explanation
     }, status: :ok
-  rescue RecommendationPipeline::NoCandidatesError => e
+  rescue Recommendations::Pipeline::NoCandidatesError => e
     render json: { error: e.message }, status: :unprocessable_content
   rescue ActionController::ParameterMissing => e
     render json: { error: e.message }, status: :bad_request

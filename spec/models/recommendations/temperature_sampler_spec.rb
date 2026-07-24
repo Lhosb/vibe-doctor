@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe TemperatureSampler do
+RSpec.describe Recommendations::TemperatureSampler do
   let(:scored_items) do
     [
       { album: :top, rerank_score: 0.9, rationale: "best" },

@@ -1,12 +1,12 @@
 require "rails_helper"
 
-RSpec.describe GenreAdmissionFilter do
+RSpec.describe Recommendations::GenreAdmissionFilter do
   let(:jazz) { build_stubbed(:album, genres: [ "Jazz" ]) }
   let(:rock) { build_stubbed(:album, genres: [ "Rock" ]) }
   let(:candidates) do
     [
-      CandidateRetrieval::Candidate.new(album: jazz, blended_score: 0.20),
-      CandidateRetrieval::Candidate.new(album: rock, blended_score: 0.24) # within default margin of 0.08
+      Recommendations::CandidateRetrieval::Candidate.new(album: jazz, blended_score: 0.20),
+      Recommendations::CandidateRetrieval::Candidate.new(album: rock, blended_score: 0.24) # within default margin of 0.08
     ]
   end
 
