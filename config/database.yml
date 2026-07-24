@@ -90,6 +90,7 @@ production:
     database: vibe_doctor_production
     username: vibe_doctor
     password: <%= ENV["VIBE_DOCTOR_DATABASE_PASSWORD"] %>
+    host: <%= ENV.fetch("DB_HOST", "localhost") %>
   cache:
     <<: *primary_production
     database: vibe_doctor_production_cache

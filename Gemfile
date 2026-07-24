@@ -46,6 +46,9 @@ gem "image_processing", "~> 1.2"
 gem "openai", "~> 0.71.0"
 
 group :development, :test do
+  # Loads environment variables from .env into ENV on boot
+  gem "dotenv-rails"
+
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
 
