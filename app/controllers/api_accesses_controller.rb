@@ -1,5 +1,6 @@
 class ApiAccessesController < ApplicationController
   def edit
+    Current.user.regenerate_api_token! if Current.user.api_token.blank?
   end
 
   def regenerate

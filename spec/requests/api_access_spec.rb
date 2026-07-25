@@ -12,6 +12,17 @@ RSpec.describe "API access settings", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(user.api_token)
     end
+
+    it "backfills a token for a user who doesn't have one yet" do
+      user.update_column(:api_token, nil)
+
+      get edit_api_access_path
+
+      expect(response).to have_http_status(:ok)
+      user.reload
+      expect(user.api_token).to be_present
+      expect(response.body).to include(user.api_token)
+    end
   end
 
   describe "POST /api_access/regenerate" do
