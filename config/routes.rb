@@ -7,6 +7,9 @@ Rails.application.routes.draw do
   resource :discogs_connection, only: %i[edit update] do
     post :resync, on: :collection
   end
+  resource :api_access, only: %i[edit] do
+    post :regenerate, on: :collection
+  end
   resource :session
   resources :passwords, param: :token
   resources :registrations, param: :token, only: [ :edit, :update ]
