@@ -1,0 +1,38 @@
+<div class="mx-auto md:w-2/3 w-full">
+  <% if alert = flash[:alert] %>
+    <p class="py-2 px-3 bg-red-50 mb-5 text-red-500 font-medium rounded-lg inline-block" id="alert"><%= alert %></p>
+  <% end %>
+
+  <% if notice = flash[:notice] %>
+    <p class="py-2 px-3 bg-green-50 mb-5 text-green-500 font-medium rounded-lg inline-block" id="notice"><%= notice %></p>
+  <% end %>
+
+  <h1 class="text-2xl font-bold">API Access</h1>
+
+  <p class="my-4 text-sm text-gray-600">
+    Use this token to let a headless client — like an iOS Shortcut — call the recommendation API
+    without signing in through the browser. Paste it into your Shortcut's "Get Contents of URL"
+    action as an <code>Authorization</code> header value, prefixed with <code>Bearer </code>.
+  </p>
+
+  <div class="my-5">
+    <label>API token</label>
+    <%= text_field_tag :api_token, Current.user.api_token, readonly: true, autocomplete: "off", class: "block border rounded-md px-3 py-2 mt-1 w-full font-mono text-sm" %>
+  </div>
+
+  <%= button_to "Regenerate", regenerate_api_access_path, method: :post, class: "rounded-md px-3.5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium cursor-pointer" %>
+
+  <p class="my-4 text-sm text-gray-600">
+    Regenerating immediately invalidates the current token — any Shortcut using the old value will
+    need to be updated with the new one.
+  </p>
+
+  <div class="mt-8 pt-4 border-t border-gray-200">
+    <h2 class="text-lg font-semibold">Manual setup</h2>
+    <p class="my-2 text-sm text-gray-600">
+      To build your own Shortcut: <code>POST</code> the vibe phrase as <code>query</code> to
+      <code>/recommend</code>, with header <code>Authorization: Bearer &lt;your token&gt;</code>,
+      and read the <code>explanation</code> field from the JSON response to have Siri speak it.
+    </p>
+  </div>
+</div>
