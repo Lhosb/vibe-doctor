@@ -18,7 +18,7 @@ module Authentication
     end
 
     def require_authentication
-      resume_session || request_authentication
+      resume_session || resume_token_session || request_authentication
     end
 
     def resume_session
@@ -29,9 +29,28 @@ module Authentication
       Session.find_by(id: cookies.signed[:session_id]) if cookies.signed[:session_id]
     end
 
+    def resume_token_session
+      token = bearer_token
+      return unless token
+
+      user = User.find_by(api_token: token)
+      Current.session = Session.new(user: user) if user
+    end
+
+    def bearer_token
+      request.authorization.to_s[/\ABearer (.+)\z/, 1]
+    end
+
     def request_authentication
-      session[:return_to_after_authenticating] = request.url
-      redirect_to new_session_path
+      # A Shortcut sends an Authorization header but often no Accept header, so
+      # treat either signal as "this is an API caller" — it can't follow an
+      # HTML login redirect either way.
+      if request.format.json? || request.authorization.present?
+        render json: { error: "unauthorized" }, status: :unauthorized
+      else
+        session[:return_to_after_authenticating] = request.url
+        redirect_to new_session_path
+      end
     end
 
     def after_authentication_url

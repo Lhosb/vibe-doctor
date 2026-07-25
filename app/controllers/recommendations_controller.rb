@@ -1,4 +1,6 @@
 class RecommendationsController < ApplicationController
+  skip_before_action :verify_authenticity_token, if: -> { request.authorization.present? }
+
   def create
     result = Recommendations::Pipeline.new(
       user: Current.user,
