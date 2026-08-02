@@ -49,4 +49,16 @@ RSpec.describe Recommendations::CandidateRetrieval do
 
     expect(candidates.length).to eq(1)
   end
+
+  it "only returns candidates within the provided album scope" do
+    candidates = described_class.new(understanding, limit: 10, album_ids: [ far_album.id ]).call
+
+    expect(candidates.map { |candidate| candidate.album.id }).to eq([ far_album.id ])
+  end
+
+  it "returns no candidates when the provided album scope is empty" do
+    candidates = described_class.new(understanding, limit: 10, album_ids: []).call
+
+    expect(candidates).to eq([])
+  end
 end

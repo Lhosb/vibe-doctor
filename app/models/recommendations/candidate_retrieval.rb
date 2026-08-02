@@ -7,9 +7,10 @@ module Recommendations
 
     Candidate = Struct.new(:album, :blended_score, keyword_init: true)
 
-    def initialize(understanding, limit: 40)
+    def initialize(understanding, limit: 40, album_ids: nil)
       @understanding = understanding
       @limit = limit
+      @album_ids = album_ids
     end
 
     def call
@@ -30,6 +31,7 @@ module Recommendations
     def facet_distance_maps
       FACET_WEIGHTS.each_key.each_with_object({}) do |facet, memo|
         relation = Embedding.nearest_neighbors(facet, @understanding.embedding, distance: "cosine").limit(PER_FACET_POOL_SIZE)
+        relation = relation.where(album_id: @album_ids) unless @album_ids.nil?
         memo[facet] = relation.each_with_object({}) { |embedding, m| m[embedding.album_id] = embedding.neighbor_distance }
       end
     end

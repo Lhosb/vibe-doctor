@@ -15,7 +15,7 @@ module Recommendations
 
     def call
       understanding = QueryUnderstandingCache.fetch(@query_text)
-      candidates = CandidateRetrieval.new(understanding).call
+      candidates = CandidateRetrieval.new(understanding, album_ids: user_album_ids).call
       admitted = GenreAdmissionFilter.new(candidates, requested_genre: @genre).call
       raise NoCandidatesError, "no albums matched the query" if admitted.empty?
 
@@ -48,6 +48,10 @@ module Recommendations
         final_score: final_score,
         explanation: chosen[:rationale]
       )
+    end
+
+    def user_album_ids
+      @user.collection_items.select(:album_id)
     end
   end
 end

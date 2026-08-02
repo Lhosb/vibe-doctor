@@ -31,6 +31,8 @@ RSpec.describe "POST /recommend with API token authentication", type: :request d
   end
 
   before do
+    CollectionItem.create!(user: user, album: album, release_id: album.master_id)
+
     create(
       :mood_vector, album: album,
       valence: 0.6, arousal: 0.3, danceability: 0.4, mood_acoustic: 0.7, mood_relaxed: 0.65, mood_happy: 0.55
