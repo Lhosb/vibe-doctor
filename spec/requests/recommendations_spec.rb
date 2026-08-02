@@ -76,6 +76,15 @@ RSpec.describe "POST /recommend", type: :request do
     )
   end
 
+  it "returns 422 when the current user has no albums in their collection" do
+    user.collection_items.delete_all
+
+    post "/recommend", params: { query: "warm sunday jazz" }
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body["error"]).to be_present
+  end
+
   it "returns 422 when no albums are admitted" do
     album.destroy!
 
