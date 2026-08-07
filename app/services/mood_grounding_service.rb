@@ -65,12 +65,16 @@ class MoodGroundingService
     on_matched.call
 
     paths = clip_paths.compact
-    track_errors = []
-    track_coords = paths.filter_map { |clip_path| analyze_local_track(clip_path, track_errors:) }
-    raise_systematic_track_failure!(track_coords, track_errors, paths.size)
-    return nil if track_coords.empty?
+    begin
+      track_errors = []
+      track_coords = paths.filter_map { |clip_path| analyze_local_track(clip_path, track_errors:) }
+      raise_systematic_track_failure!(track_coords, track_errors, paths.size)
+      return nil if track_coords.empty?
 
-    aggregate(track_coords).merge(mood_source: "essentia_youtube", match_confidence: 1.0)
+      aggregate(track_coords).merge(mood_source: "essentia_youtube", match_confidence: 1.0)
+    ensure
+      paths.each { |path| File.delete(path) if File.exist?(path) }
+    end
   end
 
   def analyze_remote_track(preview_url, track_errors:)

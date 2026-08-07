@@ -126,6 +126,21 @@ RSpec.describe MoodGroundingService do
       .to raise_error(MoodGroundingService::SystematicTrackFailure, /2 tracks failed with MoodProbe::InferenceError/)
   end
 
+  it "deletes every downloaded YouTube clip when a fatal analysis error aborts the loop" do
+    allow(itunes_matcher).to receive(:find_previews).and_return([])
+
+    Dir.mktmpdir do |directory|
+      paths = %w[one.m4a two.m4a].map { |name| File.join(directory, name) }
+      paths.each { |path| File.binwrite(path, "audio") }
+      allow(youtube_matcher).to receive(:find_clips).and_return(paths)
+      allow(feature_extractor).to receive(:analyze).with(paths.first)
+        .and_raise(MoodProbe::ConfigurationError, "bad models")
+
+      expect { service.ground(album) }.to raise_error(MoodProbe::ConfigurationError, "bad models")
+      expect(paths).to all(satisfy { |path| !File.exist?(path) })
+    end
+  end
+
   it "skips YouTube entirely when disabled" do
     service = described_class.new(itunes_matcher: itunes_matcher, youtube_matcher: youtube_matcher,
                                    feature_extractor: feature_extractor, enable_youtube_grounding: false)
