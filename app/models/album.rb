@@ -9,7 +9,7 @@ class Album < ApplicationRecord
     "matching_audio" => %w[extracting_features failed],
     "extracting_features" => %w[grounded failed],
     "grounded" => [],
-    "failed" => %w[grounded]
+    "failed" => %w[matching_audio grounded]
   }.freeze
 
   has_one :mood_vector, dependent: :destroy

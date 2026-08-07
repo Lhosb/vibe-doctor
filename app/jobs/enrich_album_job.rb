@@ -1,8 +1,12 @@
 class EnrichAlbumJob < ApplicationJob
   queue_as :default
 
-  def perform(album, mood_grounder: nil, vibe_card_generator: nil, embedding_service: nil)
-    mood_grounder ||= MoodGroundingService.new
+  def perform(album, mood_grounder: nil, feature_extractor: nil, vibe_card_generator: nil, embedding_service: nil)
+    feature_extractor ||= MoodProbe::Extractor.new(
+      models_dir: ENV.fetch("ESSENTIA_MODELS_DIR", Rails.root.join("tmp", "essentia_models"))
+    )
+    feature_extractor.verify!
+    mood_grounder ||= MoodGroundingService.new(feature_extractor:)
     vibe_card_generator ||= VibeCardGenerator.new
     embedding_service ||= AlbumEmbeddingService.new
 

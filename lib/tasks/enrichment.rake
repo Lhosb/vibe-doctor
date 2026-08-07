@@ -14,13 +14,21 @@ namespace :enrichment do
   end
 end
 
-def run_enrichment(albums)
+def run_enrichment(
+  albums,
+  feature_extractor: MoodProbe::Extractor.new(
+    models_dir: ENV.fetch("ESSENTIA_MODELS_DIR", Rails.root.join("tmp", "essentia_models"))
+  )
+)
   succeeded = 0
   failed = 0
+  feature_extractor.verify!
 
   albums.each do |album|
-    EnrichAlbumJob.perform_now(album)
+    EnrichAlbumJob.perform_now(album, feature_extractor:)
     succeeded += 1
+  rescue MoodProbe::FatalError
+    raise
   rescue StandardError => e
     failed += 1
     message = "Album #{album.id} (#{album.title}) failed: #{e.message}"

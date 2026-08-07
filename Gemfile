@@ -31,6 +31,7 @@ gem "solid_queue"
 gem "solid_cable"
 gem "neighbor"
 gem "faraday"
+gem "mood_probe", git: "https://github.com/Lhosb/mood_probe.git", branch: "main"
 
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false

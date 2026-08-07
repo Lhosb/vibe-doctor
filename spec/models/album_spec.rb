@@ -27,6 +27,18 @@ RSpec.describe Album, type: :model do
     expect(album).to be_grounded
   end
 
+  it "recovers from failed through matching_audio to grounded" do
+    album = Album.create!(master_id: 1, title: "Nevermind")
+    album.fail_enrichment!
+
+    album.start_matching!
+    expect(album).to be_matching_audio
+    album.start_extracting!
+    album.ground!
+
+    expect(album).to be_grounded
+  end
+
   it "raises on an invalid transition" do
     album = Album.create!(master_id: 1, title: "Nevermind")
     expect { album.ground! }.to raise_error(Album::InvalidTransition, "cannot transition to grounded from pending")

@@ -1,8 +1,10 @@
 require "rails_helper"
+require "tmpdir"
 
 RSpec.describe EnrichAlbumJob, type: :job do
   let(:album) { Album.create!(master_id: 1, title: "Kind of Blue", artists: [ "Miles Davis" ], year: 1959, genres: [ "Jazz" ]) }
   let(:mood_grounder) { instance_double(MoodGroundingService) }
+  let(:feature_extractor) { instance_double(MoodProbe::Extractor, verify!: true) }
   let(:vibe_card_generator) { instance_double(VibeCardGenerator) }
   let(:embedding_service) { instance_double(AlbumEmbeddingService) }
   let(:mood_attrs) do
@@ -26,7 +28,8 @@ RSpec.describe EnrichAlbumJob, type: :job do
 
   def perform
     described_class.new.perform(
-      album, mood_grounder: mood_grounder, vibe_card_generator: vibe_card_generator, embedding_service: embedding_service
+      album, mood_grounder: mood_grounder, feature_extractor:,
+      vibe_card_generator: vibe_card_generator, embedding_service: embedding_service
     )
   end
 
@@ -89,7 +92,24 @@ RSpec.describe EnrichAlbumJob, type: :job do
   it "marks the album failed even when building a default service raises, instead of leaving it stuck pending" do
     allow(VibeCardGenerator).to receive(:new).and_raise(KeyError, 'key not found: "OPENAI_API_KEY"')
 
-    expect { described_class.new.perform(album) }.to raise_error(KeyError)
+    expect { described_class.new.perform(album, feature_extractor:) }.to raise_error(KeyError)
+    expect(album.reload).to be_failed
+  end
+
+  it "preflights before matching audio and makes zero HTTP calls on configuration failure" do
+    Dir.mktmpdir do |models_dir|
+      empty_extractor = MoodProbe::Extractor.new(models_dir:)
+      expect(mood_grounder).not_to receive(:ground)
+      expect(Faraday).not_to receive(:get)
+
+      expect {
+        described_class.new.perform(
+          album, mood_grounder:, feature_extractor: empty_extractor,
+          vibe_card_generator:, embedding_service:
+        )
+      }.to raise_error(MoodProbe::ConfigurationError, /missing model/)
+    end
+
     expect(album.reload).to be_failed
   end
 end

@@ -20,8 +20,8 @@ RUN apt-get update -qq && \
     ln -s /usr/lib/$(uname -m)-linux-gnu/libjemalloc.so.2 /usr/local/lib/libjemalloc.so && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
-# Runtime toolchain for EnrichAlbumJob's audio grounding (MoodGroundingService shells out to
-# essentia via script/essentia_extract.py, and optionally yt-dlp for YouTube-sourced clips).
+# Runtime toolchain for EnrichAlbumJob's audio grounding (MoodProbe shells out to
+# its Essentia Python backend, and optionally yt-dlp provides YouTube-sourced clips).
 # essentia-tensorflow is pinned to the version with a manylinux wheel for this image's Python.
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y python3 python3-venv ffmpeg && \

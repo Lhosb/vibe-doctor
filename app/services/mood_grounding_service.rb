@@ -1,10 +1,14 @@
 require "securerandom"
 
 class MoodGroundingService
+  class SystematicTrackFailure < MoodProbe::FatalError; end
+
   def initialize(
     itunes_matcher: ItunesPreviewMatcher.new,
     youtube_matcher: YoutubeClipMatcher.new,
-    feature_extractor: EssentiaFeatureExtractor.new(models_dir: ENV.fetch("ESSENTIA_MODELS_DIR", Rails.root.join("tmp", "essentia_models"))),
+    feature_extractor: MoodProbe::Extractor.new(
+      models_dir: ENV.fetch("ESSENTIA_MODELS_DIR", Rails.root.join("tmp", "essentia_models"))
+    ),
     grounding_tracks_per_album: ENV.fetch("GROUNDING_TRACKS_PER_ALBUM", "4").to_i,
     youtube_match_confidence_threshold: ENV.fetch("YOUTUBE_MATCH_CONFIDENCE_THRESHOLD", "0.72").to_f,
     enable_youtube_grounding: ActiveModel::Type::Boolean.new.cast(ENV.fetch("ENABLE_YOUTUBE_GROUNDING", "true"))
@@ -41,7 +45,9 @@ class MoodGroundingService
 
     on_matched.call
 
-    track_coords = previews.filter_map { |preview| analyze_remote_track(preview.preview_url) }
+    track_errors = []
+    track_coords = previews.filter_map { |preview| analyze_remote_track(preview.preview_url, track_errors:) }
+    raise_systematic_track_failure!(track_coords, track_errors, previews.size)
     return nil if track_coords.empty?
 
     aggregate(track_coords).merge(mood_source: "essentia_itunes", match_confidence: previews.first.match_confidence)
@@ -58,33 +64,51 @@ class MoodGroundingService
 
     on_matched.call
 
-    track_coords = clip_paths.compact.filter_map { |clip_path| analyze_local_track(clip_path) }
+    paths = clip_paths.compact
+    track_errors = []
+    track_coords = paths.filter_map { |clip_path| analyze_local_track(clip_path, track_errors:) }
+    raise_systematic_track_failure!(track_coords, track_errors, paths.size)
     return nil if track_coords.empty?
 
     aggregate(track_coords).merge(mood_source: "essentia_youtube", match_confidence: 1.0)
   end
 
-  def analyze_remote_track(preview_url)
+  def analyze_remote_track(preview_url, track_errors:)
     dest_path = Rails.root.join("tmp", "vibe_doctor_itunes_#{SecureRandom.hex}.audio")
     response = Faraday.get(preview_url) { |request| request.options.timeout = 15 }
     raise Faraday::Error, "download failed: #{response.status}" unless response.success?
 
     dest_path.binwrite(response.body)
-    @feature_extractor.analyze(dest_path)
-  rescue EssentiaFeatureExtractor::Error, Faraday::Error => e
+    @feature_extractor.analyze(dest_path).to_h
+  rescue MoodProbe::TrackError => e
+    track_errors << e
+    Rails.logger.warn("iTunes-sourced track analysis failed for '#{preview_url}': #{e.message}")
+    nil
+  rescue Faraday::Error => e
     Rails.logger.warn("iTunes-sourced track analysis failed for '#{preview_url}': #{e.message}")
     nil
   ensure
     File.delete(dest_path) if File.exist?(dest_path)
   end
 
-  def analyze_local_track(clip_path)
-    @feature_extractor.analyze(clip_path)
-  rescue EssentiaFeatureExtractor::Error => e
+  def analyze_local_track(clip_path, track_errors:)
+    @feature_extractor.analyze(clip_path).to_h
+  rescue MoodProbe::TrackError => e
+    track_errors << e
     Rails.logger.warn("YouTube-sourced track analysis failed for '#{clip_path}': #{e.message}")
     nil
   ensure
     File.delete(clip_path) if File.exist?(clip_path)
+  end
+
+  def raise_systematic_track_failure!(track_coords, track_errors, track_count)
+    return unless track_coords.empty? && track_errors.size == track_count
+
+    error_classes = track_errors.map(&:class).uniq
+    return unless error_classes.one?
+
+    error_class = error_classes.first
+    raise SystematicTrackFailure, "#{track_count} tracks failed with #{error_class}"
   end
 
   def aggregate(track_coords)

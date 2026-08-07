@@ -1,5 +1,5 @@
 require "json"
-require "open3"
+require "mood_probe"
 require "pathname"
 require "spec_helper"
 
@@ -17,23 +17,21 @@ RSpec.describe "Essentia extraction goldens", :essentia do
   AUDIO_DIR = ROOT.join("spec/fixtures/mood_probe/audio")
   GOLDEN_DIR = ROOT.join("spec/fixtures/mood_probe/golden")
   MODELS_DIR = ROOT.join("tmp/essentia_models")
-  SCRIPT_PATH = ROOT.join("script/essentia_extract.py")
   MOOD_HEADS = %w[valence arousal danceability mood_acoustic mood_relaxed mood_happy].sort.freeze
   DECODABLE_FIXTURES = %w[chirp clicks sine_440 white_noise].freeze
+
+  let(:extractor) { MoodProbe::Extractor.new(models_dir: MODELS_DIR) }
 
   DECODABLE_FIXTURES.each do |fixture_name|
     it "matches the #{fixture_name} golden output" do
       audio_path = AUDIO_DIR.join("#{fixture_name}.wav")
       expect(audio_path).to exist
 
-      expected = JSON.parse(GOLDEN_DIR.join("#{fixture_name}.json").read)
-      stdout, stderr, status = Open3.capture3(
-        "python3", SCRIPT_PATH.to_s, audio_path.to_s, "--models-dir", MODELS_DIR.to_s
-      )
+      expected = JSON.parse(GOLDEN_DIR.join("#{fixture_name}.json").read, symbolize_names: true)
+      features = extractor.analyze(audio_path)
 
-      expect(status).to be_success, stderr
-      expect(JSON.parse(stdout)).to eq(expected)
-      expect(expected.keys.sort).to eq(MOOD_HEADS)
+      expect(features.to_h).to eq(expected)
+      expect(expected.keys.map(&:to_s).sort).to eq(MOOD_HEADS)
     end
   end
 
@@ -41,12 +39,6 @@ RSpec.describe "Essentia extraction goldens", :essentia do
     audio_path = AUDIO_DIR.join("undecodable.m4a")
     expect(audio_path).to exist
 
-    stdout, stderr, status = Open3.capture3(
-      "python3", SCRIPT_PATH.to_s, audio_path.to_s, "--models-dir", MODELS_DIR.to_s
-    )
-
-    expect(status).not_to be_success
-    expect(stdout).to be_empty
-    expect(stderr).to include("essentia_extract failed:")
+    expect { extractor.analyze(audio_path) }.to raise_error(MoodProbe::UnreadableAudioError)
   end
 end
