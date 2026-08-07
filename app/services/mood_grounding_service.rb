@@ -120,12 +120,17 @@ class MoodGroundingService
     # Requiring one class deliberately favors false negatives over escalating unrelated per-track faults.
     return unless error_classes.one?
 
-    "#{track_count} #{source} tracks failed with #{error_classes.first}"
+    error_class = error_classes.first
+    # Expected content/network failures remain visible to the run-level guard but cannot abort on one album.
+    return if error_class <= Faraday::Error
+
+    "#{track_count} #{source} tracks failed with #{error_class}"
   end
 
   def raise_systematic_track_failure!(itunes_failure, youtube_failure)
     return unless itunes_failure && youtube_failure
 
+    # The sources need not share a class; two independent uniform failures are still systematic evidence.
     raise SystematicTrackFailure, "#{itunes_failure}; #{youtube_failure}"
   end
 
