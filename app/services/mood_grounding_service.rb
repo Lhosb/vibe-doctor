@@ -114,17 +114,19 @@ class MoodGroundingService
   end
 
   def systematic_track_failure(track_coords, track_errors, track_count, source:)
-    return unless track_count > 1 && track_coords.empty? && track_errors.size == track_count
+    faraday_failures = track_errors.count { |error| error.is_a?(Faraday::Error) }
+    analyzable = track_count - faraday_failures
+    probe_errors = track_errors.reject { |error| error.is_a?(Faraday::Error) }
+    return unless analyzable > 1 && track_coords.empty? && probe_errors.size == analyzable
 
-    error_classes = track_errors.map(&:class).uniq
+    error_classes = probe_errors.map(&:class).uniq
     # Requiring one class deliberately favors false negatives over escalating unrelated per-track faults.
     return unless error_classes.one?
 
     error_class = error_classes.first
-    # Expected content/network failures remain visible to the run-level guard but cannot abort on one album.
-    return if error_class <= Faraday::Error
-
-    "#{track_count} #{source} tracks failed with #{error_class}"
+    # Download failures stay recorded for diagnostics but provide no extractor evidence; the run-level
+    # llm_only guard catches download-scale outages across albums regardless of error class.
+    "#{analyzable} #{source} tracks failed with #{error_class}"
   end
 
   def raise_systematic_track_failure!(itunes_failure, youtube_failure)

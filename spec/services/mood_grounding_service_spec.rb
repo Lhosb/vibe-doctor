@@ -108,6 +108,27 @@ RSpec.describe MoodGroundingService do
     expect(service.ground(album)[:mood_source]).to eq("llm_only")
   end
 
+  it "counts only tracks that reached the extractor when download and probe failures are mixed" do
+    stub_request(:get, "https://example.com/mixed.m4a").to_return(
+      { status: 404 },
+      { status: 404 },
+      { status: 200, body: "audio" },
+      { status: 200, body: "audio" }
+    )
+    allow(itunes_matcher).to receive(:find_previews).and_return(
+      Array.new(4) { itunes_match("https://example.com/mixed.m4a", 0.9) }
+    )
+    allow(youtube_matcher).to receive(:find_clips).and_return([ "/tmp/one.m4a", "/tmp/two.m4a" ])
+    allow(feature_extractor).to receive(:analyze).and_raise(MoodProbe::UnreadableAudioError, "corrupt")
+
+    expect { service.ground(album) }
+      .to raise_error(
+        MoodGroundingService::SystematicTrackFailure,
+        "2 iTunes tracks failed with MoodProbe::UnreadableAudioError; " \
+        "2 YouTube tracks failed with MoodProbe::UnreadableAudioError"
+      )
+  end
+
   it "uses YouTube when every iTunes preview download fails" do
     stub_request(:get, "https://example.com/missing.m4a").to_return(status: 404)
     allow(itunes_matcher).to receive(:find_previews).and_return(
