@@ -96,6 +96,7 @@ class MoodGroundingService
     Rails.logger.warn("iTunes-sourced track analysis failed for '#{preview_url}': #{e.message}")
     nil
   rescue Faraday::Error => e
+    track_errors << e
     Rails.logger.warn("iTunes-sourced track analysis failed for '#{preview_url}': #{e.message}")
     nil
   ensure
@@ -116,6 +117,7 @@ class MoodGroundingService
     return unless track_count > 1 && track_coords.empty? && track_errors.size == track_count
 
     error_classes = track_errors.map(&:class).uniq
+    # Requiring one class deliberately favors false negatives over escalating unrelated per-track faults.
     return unless error_classes.one?
 
     "#{track_count} #{source} tracks failed with #{error_classes.first}"

@@ -23,6 +23,29 @@ RSpec.describe "enrichment:backfill rake task" do
     expect(EnrichAlbumJob).not_to have_received(:perform_now).with(grounded, feature_extractor:)
   end
 
+  it "recovers a previously failed album through the real backfill job" do
+    failed = Album.create!(master_id: 1, title: "Recovered").tap(&:start_matching!).tap(&:fail_enrichment!)
+    mood_grounder = instance_double(MoodGroundingService)
+    vibe_card_generator = instance_double(VibeCardGenerator, generate: nil)
+    embedding_service = instance_double(AlbumEmbeddingService)
+    mood_attrs = MoodVector::MOOD_HEADS.index_with { 0.5 }
+      .merge(mood_source: "essentia_itunes", match_confidence: 0.9, spread: {})
+    facet_vectors = %i[sonic emotional situational era].index_with { Array.new(1536, 0.1) }
+    allow(MoodGroundingService).to receive(:new).with(feature_extractor:).and_return(mood_grounder)
+    allow(VibeCardGenerator).to receive(:new).and_return(vibe_card_generator)
+    allow(AlbumEmbeddingService).to receive(:new).and_return(embedding_service)
+    allow(mood_grounder).to receive(:ground) do |_album, on_matched:|
+      on_matched.call
+      mood_attrs
+    end
+    allow(embedding_service).to receive(:embed).and_return(facet_vectors)
+
+    Rake::Task["enrichment:backfill"].invoke
+
+    expect(failed.reload).to be_grounded
+    expect(failed.mood_vector.mood_source).to eq("essentia_itunes")
+  end
+
   it "keeps processing after one album fails, and prints a summary" do
     ok = Album.create!(master_id: 1, title: "Ok")
     broken = Album.create!(master_id: 2, title: "Broken")

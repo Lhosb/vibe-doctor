@@ -97,6 +97,33 @@ RSpec.describe MoodGroundingService do
     expect(youtube_matcher).to have_received(:find_clips)
   end
 
+  it "escalates when every iTunes download and YouTube analysis fails uniformly" do
+    stub_request(:get, "https://example.com/missing.m4a").to_return(status: 404)
+    allow(itunes_matcher).to receive(:find_previews).and_return(
+      Array.new(2) { itunes_match("https://example.com/missing.m4a", 0.9) }
+    )
+    allow(youtube_matcher).to receive(:find_clips).and_return([ "/tmp/one.m4a", "/tmp/two.m4a" ])
+    allow(feature_extractor).to receive(:analyze).and_raise(MoodProbe::InferenceError, "boom")
+
+    expect { service.ground(album) }
+      .to raise_error(
+        MoodGroundingService::SystematicTrackFailure,
+        "2 iTunes tracks failed with Faraday::Error; " \
+        "2 YouTube tracks failed with MoodProbe::InferenceError"
+      )
+  end
+
+  it "uses YouTube when every iTunes preview download fails" do
+    stub_request(:get, "https://example.com/missing.m4a").to_return(status: 404)
+    allow(itunes_matcher).to receive(:find_previews).and_return(
+      Array.new(2) { itunes_match("https://example.com/missing.m4a", 0.9) }
+    )
+    allow(youtube_matcher).to receive(:find_clips).and_return([ "/tmp/clip.m4a" ])
+    allow(feature_extractor).to receive(:analyze).with("/tmp/clip.m4a").and_return(features)
+
+    expect(service.ground(album)[:mood_source]).to eq("essentia_youtube")
+  end
+
   it "grounds from the survivors when some but not all tracks fail analysis" do
     allow(itunes_matcher).to receive(:find_previews).and_return(
       [ itunes_match("https://example.com/preview.m4a", 0.9), itunes_match("https://example.com/preview.m4a", 0.9) ]
