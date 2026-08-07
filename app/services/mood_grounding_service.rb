@@ -117,6 +117,7 @@ class MoodGroundingService
     faraday_failures = track_errors.count { |error| error.is_a?(Faraday::Error) }
     analyzable = track_count - faraday_failures
     probe_errors = track_errors.reject { |error| error.is_a?(Faraday::Error) }
+    # A single analyzable failure is trivially uniform, so it cannot justify aborting the catalogue.
     return unless analyzable > 1 && track_coords.empty? && probe_errors.size == analyzable
 
     error_classes = probe_errors.map(&:class).uniq
