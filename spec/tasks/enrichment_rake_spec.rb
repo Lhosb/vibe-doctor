@@ -71,7 +71,8 @@ RSpec.describe "enrichment:backfill rake task" do
                                                    .and_raise(MoodProbe::BackendError, "protocol broke")
 
     expect { run_enrichment([ broken, untouched ], feature_extractor:) }
-      .to raise_error(MoodProbe::BackendError, "protocol broke")
+      .to output(/2 albums processed: 0 succeeded, 0 failed/).to_stdout
+      .and raise_error(MoodProbe::BackendError, "protocol broke")
     expect(EnrichAlbumJob).not_to have_received(:perform_now).with(untouched, feature_extractor:)
   end
 end
@@ -96,5 +97,14 @@ RSpec.describe "enrichment:reground_all rake task" do
     expect(grounded.reload).to be_pending
     expect(EnrichAlbumJob).to have_received(:perform_now).with(grounded, feature_extractor:).once
     expect(EnrichAlbumJob).to have_received(:perform_now).with(pending, feature_extractor:).once
+  end
+
+  it "preflights before resetting any album" do
+    grounded = Album.create!(master_id: 1, title: "Grounded").tap(&:start_matching!).tap(&:start_extracting!).tap(&:ground!)
+    allow(feature_extractor).to receive(:verify!).and_raise(MoodProbe::ConfigurationError, "bad models")
+
+    expect { Rake::Task["enrichment:reground_all"].invoke }
+      .to raise_error(MoodProbe::ConfigurationError, "bad models")
+    expect(grounded.reload).to be_grounded
   end
 end

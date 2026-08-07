@@ -75,14 +75,26 @@ RSpec.describe MoodGroundingService do
     expect(result[:valence]).to eq(0.5)
   end
 
-  it "escalates when every matched track fails with the same error class" do
+  it "does not escalate when only one matched track fails" do
+    allow(itunes_matcher).to receive(:find_previews).and_return(
+      [ itunes_match("https://example.com/preview.m4a", 0.9) ]
+    )
+    allow(feature_extractor).to receive(:analyze).and_raise(MoodProbe::UnreadableAudioError, "corrupt")
+    allow(youtube_matcher).to receive(:find_clips).and_return([])
+
+    expect(service.ground(album)[:mood_source]).to eq("llm_only")
+  end
+
+  it "tries YouTube after multiple iTunes tracks fail uniformly" do
     allow(itunes_matcher).to receive(:find_previews).and_return(
       [ itunes_match("https://example.com/preview.m4a", 0.9), itunes_match("https://example.com/preview.m4a", 0.9) ]
     )
     allow(feature_extractor).to receive(:analyze).and_raise(MoodProbe::InferenceError, "boom")
+    allow(youtube_matcher).to receive(:find_clips).and_return([ "/tmp/clip.m4a" ])
+    allow(feature_extractor).to receive(:analyze).with("/tmp/clip.m4a").and_return(features)
 
-    expect { service.ground(album) }
-      .to raise_error(MoodGroundingService::SystematicTrackFailure, /2 tracks failed with MoodProbe::InferenceError/)
+    expect(service.ground(album)[:mood_source]).to eq("essentia_youtube")
+    expect(youtube_matcher).to have_received(:find_clips)
   end
 
   it "grounds from the survivors when some but not all tracks fail analysis" do
@@ -116,14 +128,21 @@ RSpec.describe MoodGroundingService do
     expect { service.ground(album) }.to raise_error(MoodProbe::ConfigurationError, "bad models")
   end
 
-  it "escalates identical failures across every matched YouTube clip" do
-    allow(itunes_matcher).to receive(:find_previews).and_return([])
+  it "escalates only after both sources fail uniformly across multiple tracks" do
+    allow(itunes_matcher).to receive(:find_previews).and_return(
+      [ itunes_match("https://example.com/preview.m4a", 0.9), itunes_match("https://example.com/preview.m4a", 0.9) ]
+    )
     allow(youtube_matcher).to receive(:find_clips).and_return([ "/tmp/one.m4a", "/tmp/two.m4a" ])
     allow(feature_extractor).to receive(:analyze).and_raise(MoodProbe::InferenceError, "boom")
     allow(File).to receive(:exist?).and_return(false)
 
     expect { service.ground(album) }
-      .to raise_error(MoodGroundingService::SystematicTrackFailure, /2 tracks failed with MoodProbe::InferenceError/)
+      .to raise_error(
+        MoodGroundingService::SystematicTrackFailure,
+        "2 iTunes tracks failed with MoodProbe::InferenceError; " \
+        "2 YouTube tracks failed with MoodProbe::InferenceError"
+      )
+    expect(youtube_matcher).to have_received(:find_clips)
   end
 
   it "deletes every downloaded YouTube clip when a fatal analysis error aborts the loop" do

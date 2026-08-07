@@ -30,7 +30,14 @@ class MoodGroundingService
       on_matched&.call
     end
 
-    ground_via_itunes(album, guarded_callback) || ground_via_youtube(album, guarded_callback) || default_attrs
+    itunes_attrs, itunes_failure = ground_via_itunes(album, guarded_callback)
+    return itunes_attrs if itunes_attrs
+
+    youtube_attrs, youtube_failure = ground_via_youtube(album, guarded_callback)
+    return youtube_attrs if youtube_attrs
+
+    raise_systematic_track_failure!(itunes_failure, youtube_failure)
+    default_attrs
   end
 
   private
@@ -41,26 +48,26 @@ class MoodGroundingService
 
   def ground_via_itunes(album, on_matched)
     previews = @itunes_matcher.find_previews(title: album.title, artists: album.artists, max_tracks: @grounding_tracks_per_album)
-    return nil if previews.empty?
+    return [ nil, nil ] if previews.empty?
 
     on_matched.call
 
     track_errors = []
     track_coords = previews.filter_map { |preview| analyze_remote_track(preview.preview_url, track_errors:) }
-    raise_systematic_track_failure!(track_coords, track_errors, previews.size)
-    return nil if track_coords.empty?
+    failure = systematic_track_failure(track_coords, track_errors, previews.size, source: "iTunes")
+    return [ nil, failure ] if track_coords.empty?
 
-    aggregate(track_coords).merge(mood_source: "essentia_itunes", match_confidence: previews.first.match_confidence)
+    [ aggregate(track_coords).merge(mood_source: "essentia_itunes", match_confidence: previews.first.match_confidence), nil ]
   end
 
   def ground_via_youtube(album, on_matched)
-    return nil unless @enable_youtube_grounding
+    return [ nil, nil ] unless @enable_youtube_grounding
 
     clip_paths = @youtube_matcher.find_clips(
       title: album.title, artists: album.artists,
       confidence_threshold: @youtube_match_confidence_threshold, max_clips: @grounding_tracks_per_album
     )
-    return nil if clip_paths.compact.empty?
+    return [ nil, nil ] if clip_paths.compact.empty?
 
     on_matched.call
 
@@ -68,10 +75,10 @@ class MoodGroundingService
     begin
       track_errors = []
       track_coords = paths.filter_map { |clip_path| analyze_local_track(clip_path, track_errors:) }
-      raise_systematic_track_failure!(track_coords, track_errors, paths.size)
-      return nil if track_coords.empty?
+      failure = systematic_track_failure(track_coords, track_errors, paths.size, source: "YouTube")
+      return [ nil, failure ] if track_coords.empty?
 
-      aggregate(track_coords).merge(mood_source: "essentia_youtube", match_confidence: 1.0)
+      [ aggregate(track_coords).merge(mood_source: "essentia_youtube", match_confidence: 1.0), nil ]
     ensure
       paths.each { |path| File.delete(path) if File.exist?(path) }
     end
@@ -105,14 +112,19 @@ class MoodGroundingService
     File.delete(clip_path) if File.exist?(clip_path)
   end
 
-  def raise_systematic_track_failure!(track_coords, track_errors, track_count)
-    return unless track_coords.empty? && track_errors.size == track_count
+  def systematic_track_failure(track_coords, track_errors, track_count, source:)
+    return unless track_count > 1 && track_coords.empty? && track_errors.size == track_count
 
     error_classes = track_errors.map(&:class).uniq
     return unless error_classes.one?
 
-    error_class = error_classes.first
-    raise SystematicTrackFailure, "#{track_count} tracks failed with #{error_class}"
+    "#{track_count} #{source} tracks failed with #{error_classes.first}"
+  end
+
+  def raise_systematic_track_failure!(itunes_failure, youtube_failure)
+    return unless itunes_failure && youtube_failure
+
+    raise SystematicTrackFailure, "#{itunes_failure}; #{youtube_failure}"
   end
 
   def aggregate(track_coords)
