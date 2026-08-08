@@ -3,6 +3,10 @@ require "rails_helper"
 RSpec.describe YoutubeClipMatcher do
   subject(:matcher) { described_class.new }
 
+  it "does not accept an executable override" do
+    expect { described_class.new(yt_dlp_executable: "malicious") }.to raise_error(ArgumentError)
+  end
+
   def search_result(id, title)
     "#{{ id: id, title: title }.to_json}\n"
   end

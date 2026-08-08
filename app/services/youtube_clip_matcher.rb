@@ -8,10 +8,7 @@ class YoutubeClipMatcher
   CLIP_START_SECONDS = 60
   CLIP_DURATION_SECONDS = 45
   SOCKET_TIMEOUT_SECONDS = 30
-
-  def initialize(yt_dlp_executable: "yt-dlp")
-    @yt_dlp_executable = yt_dlp_executable
-  end
+  YT_DLP_EXECUTABLE = "yt-dlp".freeze
 
   # Downloading YouTube audio for algorithmic analysis is a legal gray area.
   # Callers MUST delete every returned file immediately after analysis; only
@@ -32,7 +29,7 @@ class YoutubeClipMatcher
 
   def search(term, limit)
     stdout, _stderr, status = Open3.capture3(
-      @yt_dlp_executable, "ytsearch#{limit}:#{term}",
+      YT_DLP_EXECUTABLE, "ytsearch#{limit}:#{term}",
       "--flat-playlist", "--dump-json", "--quiet", "--no-warnings",
       "--socket-timeout", SOCKET_TIMEOUT_SECONDS.to_s
     )
@@ -54,7 +51,7 @@ class YoutubeClipMatcher
       dest_template = File.join(dest_dir, "#{SecureRandom.hex}.%(ext)s")
 
       _stdout, _stderr, status = Open3.capture3(
-        @yt_dlp_executable, "https://www.youtube.com/watch?v=#{video_id}",
+        YT_DLP_EXECUTABLE, "https://www.youtube.com/watch?v=#{video_id}",
         "--format", "bestaudio/best",
         "--download-sections", "*#{CLIP_START_SECONDS}-#{CLIP_START_SECONDS + CLIP_DURATION_SECONDS}",
         "--force-keyframes-at-cuts",
