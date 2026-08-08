@@ -19,7 +19,8 @@ RSpec.describe "Essentia extraction goldens", :essentia do
   MODELS_DIR = ROOT.join("tmp/essentia_models")
   MOOD_HEADS = %w[valence arousal danceability mood_acoustic mood_relaxed mood_happy].sort.freeze
   DECODABLE_FIXTURES = %w[chirp clicks sine_440 white_noise].freeze
-  # Deliberately 10x tighter than Phase 4's 1e-3 ONNX parity gate so this gate cannot subsume it.
+  # Relative-bound heads are 10x tighter than Phase 4's 1e-3 ONNX gate; the floor-bound head is ~1.5x tighter.
+  # Calibration control: a 0.900e-04 chirp.valence perturbation passed, while 1.100e-04 failed.
   GOLDEN_REL_TOL = 1e-4
   GOLDEN_ABS_FLOOR = 1e-10
   CPU_IDENTIFIER = (
@@ -53,7 +54,10 @@ RSpec.describe "Essentia extraction goldens", :essentia do
 
         [ head, { actual: actual_value, expected: expected_value, absolute_deviation:, relative_deviation:, tolerance: } ]
       end
-      max_head, max_comparison = comparisons.max_by { |_head, comparison| comparison.fetch(:relative_deviation) }
+      max_head, max_comparison = comparisons.max_by do |_head, comparison|
+        deviation = comparison.fetch(:relative_deviation)
+        deviation.nan? ? Float::INFINITY : deviation
+      end
       diagnostic = "#{fixture_name}: max rel dev #{format("%.3e", max_comparison.fetch(:relative_deviation))} " \
         "on #{max_head} [cpu: #{CPU_IDENTIFIER}]"
 

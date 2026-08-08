@@ -3,8 +3,8 @@ require "rails_helper"
 RSpec.describe YoutubeClipMatcher do
   subject(:matcher) { described_class.new }
 
-  it "does not accept an executable override" do
-    expect { described_class.new(yt_dlp_executable: "malicious") }.to raise_error(ArgumentError)
+  it "accepts no constructor parameters, so the executable cannot be injected" do
+    expect(described_class.instance_method(:initialize).parameters).to be_empty
   end
 
   def search_result(id, title)

@@ -116,4 +116,6 @@ jobs:
           docker run --rm --platform linux/amd64 --entrypoint bash \
             -e ESSENTIA_SPECS=1 -e RAILS_ENV=test \
             vibe-doctor-essentia-goldens \
-            -c "bundle exec rspec spec/integration/essentia_extract_golden_spec.rb --format documentation"
+            -c 'output=$(bundle exec rspec spec/integration/essentia_extract_golden_spec.rb --format documentation); \
+              status=$?; printf "%s\n" "$output"; \
+              test "$status" -eq 0 && grep -q "5 examples, 0 failures" <<< "$output"'
