@@ -56,6 +56,7 @@ RSpec.describe "Essentia extraction goldens", :essentia do
       end
       max_head, max_comparison = comparisons.max_by do |_head, comparison|
         deviation = comparison.fetch(:relative_deviation)
+        # An actual NaN propagates through the arithmetic; rank it first so the assertion names its head.
         deviation.nan? ? Float::INFINITY : deviation
       end
       diagnostic = "#{fixture_name}: max rel dev #{format("%.3e", max_comparison.fetch(:relative_deviation))} " \

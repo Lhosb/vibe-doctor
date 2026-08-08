@@ -113,9 +113,11 @@ jobs:
 
       - name: Run Essentia golden specs
         run: |
+          # Expected examples = golden fixture count + one undecodable-audio example.
           docker run --rm --platform linux/amd64 --entrypoint bash \
             -e ESSENTIA_SPECS=1 -e RAILS_ENV=test \
             vibe-doctor-essentia-goldens \
-            -c 'output=$(bundle exec rspec spec/integration/essentia_extract_golden_spec.rb --format documentation); \
+            -c 'expected=$(($(ls spec/fixtures/mood_probe/golden/*.json | wc -l) + 1)); \
+              output=$(bundle exec rspec spec/integration/essentia_extract_golden_spec.rb --format documentation); \
               status=$?; printf "%s\n" "$output"; \
-              test "$status" -eq 0 && grep -q "5 examples, 0 failures" <<< "$output"'
+              test "$status" -eq 0 && grep -qE "^${expected} examples, 0 failures$" <<< "$output"'
