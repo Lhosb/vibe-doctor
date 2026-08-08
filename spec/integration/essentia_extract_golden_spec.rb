@@ -19,6 +19,9 @@ RSpec.describe "Essentia extraction goldens", :essentia do
   MODELS_DIR = ROOT.join("tmp/essentia_models")
   MOOD_HEADS = %w[valence arousal danceability mood_acoustic mood_relaxed mood_happy].sort.freeze
   DECODABLE_FIXTURES = %w[chirp clicks sine_440 white_noise].freeze
+  # Deliberately 10x tighter than Phase 4's 1e-3 ONNX parity gate so this gate cannot subsume it.
+  GOLDEN_REL_TOL = 1e-4
+  GOLDEN_ABS_FLOOR = 1e-10
 
   let(:extractor) { MoodProbe::Extractor.new(models_dir: MODELS_DIR) }
 
@@ -29,9 +32,29 @@ RSpec.describe "Essentia extraction goldens", :essentia do
 
       expected = JSON.parse(GOLDEN_DIR.join("#{fixture_name}.json").read, symbolize_names: true)
       features = extractor.analyze(audio_path)
+      actual = features.to_h
 
-      expect(features.to_h).to eq(expected)
+      expect(actual.keys.map(&:to_s).sort).to eq(MOOD_HEADS)
       expect(expected.keys.map(&:to_s).sort).to eq(MOOD_HEADS)
+
+      comparisons = expected.to_h do |head, expected_value|
+        actual_value = actual.fetch(head)
+        absolute_deviation = (actual_value - expected_value).abs
+        relative_deviation = expected_value.zero? ? absolute_deviation : absolute_deviation / expected_value.abs
+        tolerance = [ GOLDEN_REL_TOL * expected_value.abs, GOLDEN_ABS_FLOOR ].max
+
+        [ head, { actual: actual_value, expected: expected_value, absolute_deviation:, relative_deviation:, tolerance: } ]
+      end
+      max_head, max_comparison = comparisons.max_by { |_head, comparison| comparison.fetch(:relative_deviation) }
+      diagnostic = "#{fixture_name}: max rel dev #{format("%.3e", max_comparison.fetch(:relative_deviation))} on #{max_head}"
+
+      puts diagnostic
+
+      comparisons.each do |head, comparison|
+        expect(comparison.fetch(:absolute_deviation)).to be <= comparison.fetch(:tolerance),
+          "#{diagnostic}; #{head} expected #{comparison.fetch(:expected)}, " \
+          "got #{comparison.fetch(:actual)}, tolerance #{comparison.fetch(:tolerance)}"
+      end
     end
   end
 
