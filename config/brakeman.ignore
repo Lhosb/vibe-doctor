@@ -1,0 +1,13 @@
+{
+  "ignored_warnings": [
+    {
+      "fingerprint": "26577b2dccccae3181b6d68d789f3368b9d8ed5c729240def36ff4641f6b4a4c",
+      "note": "False positive: `Open3.capture3` is called with separate argv elements and the executable is the frozen literal constant `YT_DLP_EXECUTABLE = \"yt-dlp\"`, with no constructor or configuration injection seam. Untrusted Discogs/admin metadata remains inside one positional argument prefixed `ytsearch#{integer}:`, and yt-dlp parses all content after the colon, including whitespace/newlines, as the search query. It cannot become an executable or option argv element. Re-review if the executable becomes configurable, the fixed prefix is removed, or execution changes to a shell/string form."
+    },
+    {
+      "fingerprint": "cff548148a3c509641aa37be3d945faea330a97cbe8e4a20b99586a34df8494f",
+      "note": "False positive: `Open3.capture3` uses separate argv elements and the executable is the frozen literal constant `YT_DLP_EXECUTABLE = \"yt-dlp\"`, with no constructor or configuration injection seam. `video_id` is parsed from yt-dlp's own NDJSON output and remains inside one positional argument prefixed `https://www.youtube.com/watch?v=`; empty, dash-prefixed, whitespace, or newline-containing values cannot become executable names or option argv elements. `--download-sections` is constant and `--output` is a SecureRandom path under `Dir.mktmpdir`. Re-review if the executable or option values become externally configurable, the URL prefix is removed, or execution changes to a shell/string form."
+    }
+  ],
+  "brakeman_version": "8.0.5"
+}

@@ -19,6 +19,13 @@ RSpec.describe "Essentia extraction goldens", :essentia do
   MODELS_DIR = ROOT.join("tmp/essentia_models")
   MOOD_HEADS = %w[valence arousal danceability mood_acoustic mood_relaxed mood_happy].sort.freeze
   DECODABLE_FIXTURES = %w[chirp clicks sine_440 white_noise].freeze
+  # Relative-bound heads are 10x tighter than Phase 4's 1e-3 ONNX gate; the floor-bound head is ~1.5x tighter.
+  # Calibration control: a 0.900e-04 chirp.valence perturbation passed, while 1.100e-04 failed.
+  GOLDEN_REL_TOL = 1e-4
+  GOLDEN_ABS_FLOOR = 1e-10
+  CPU_IDENTIFIER = (
+    File.exist?("/proc/cpuinfo") && File.read("/proc/cpuinfo")[/^model name\s*:\s*(.+)$/, 1] || "unknown CPU"
+  ).freeze
 
   let(:extractor) { MoodProbe::Extractor.new(models_dir: MODELS_DIR) }
 
@@ -29,9 +36,39 @@ RSpec.describe "Essentia extraction goldens", :essentia do
 
       expected = JSON.parse(GOLDEN_DIR.join("#{fixture_name}.json").read, symbolize_names: true)
       features = extractor.analyze(audio_path)
+      actual = features.to_h
 
-      expect(features.to_h).to eq(expected)
+      expect(actual.keys.map(&:to_s).sort).to eq(MOOD_HEADS)
       expect(expected.keys.map(&:to_s).sort).to eq(MOOD_HEADS)
+
+      comparisons = expected.to_h do |head, expected_value|
+        actual_value = actual.fetch(head)
+        absolute_deviation = (actual_value - expected_value).abs
+        # Nonzero drift from an exact zero has no finite relative deviation, so it must dominate the diagnostic ranking.
+        relative_deviation = if expected_value.zero?
+          absolute_deviation.zero? ? 0.0 : Float::INFINITY
+        else
+          absolute_deviation / expected_value.abs
+        end
+        tolerance = [ GOLDEN_REL_TOL * expected_value.abs, GOLDEN_ABS_FLOOR ].max
+
+        [ head, { actual: actual_value, expected: expected_value, absolute_deviation:, relative_deviation:, tolerance: } ]
+      end
+      max_head, max_comparison = comparisons.max_by do |_head, comparison|
+        deviation = comparison.fetch(:relative_deviation)
+        # An actual NaN propagates through the arithmetic; rank it first so the assertion names its head.
+        deviation.nan? ? Float::INFINITY : deviation
+      end
+      diagnostic = "#{fixture_name}: max rel dev #{format("%.3e", max_comparison.fetch(:relative_deviation))} " \
+        "on #{max_head} [cpu: #{CPU_IDENTIFIER}]"
+
+      puts diagnostic
+
+      comparisons.each do |head, comparison|
+        expect(comparison.fetch(:absolute_deviation)).to be <= comparison.fetch(:tolerance),
+          "#{diagnostic}; #{head} expected #{comparison.fetch(:expected)}, " \
+          "got #{comparison.fetch(:actual)}, tolerance #{comparison.fetch(:tolerance)}"
+      end
     end
   end
 
