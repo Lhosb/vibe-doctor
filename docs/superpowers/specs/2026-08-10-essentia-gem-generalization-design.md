@@ -374,7 +374,9 @@ without reservation — `principal.md` §4.1's `getattr(es, name)(**params)` was
 - **(b) Path containment.** `plan["graphs"][i]["file"]` matches `\A[A-Za-z0-9._-]+\.pb\z`, is joined
   under `--models-dir`, canonicalised, asserted inside the root, asserted a regular non-symlink file.
   Today Python joins a *constant* (`mood_probe_extract.py:27`); the moment the filename is wire data
-  the check is mandatory.
+  the check is mandatory. This is defence in depth against hostile **wire data**, not a guarantee that
+  Python opens the inode Ruby verified: canonicalise/check/open is itself pathname-based and has a
+  TOCTOU window. Slice 3 must preserve the check without claiming it closes the host-adversary class.
 - **(c) Per-algorithm param whitelist.** Each enum entry declares permitted `params` keys and value
   types. Otherwise `params` is kwargs injection into native code.
 - **(d) `schema_version` handshake** — already in `principal.md` §3.2; restated here as a *security*
@@ -459,6 +461,24 @@ import attempted. Both run on a Mac.
   no vector-valued key (`app/controllers/recommendations_controller.rb:4-20`,
   `app/models/albums/vibe_map_builder.rb:31-46`).
 - **7 — licensing visible.** §G.
+
+### C.5 Host filesystem threat model
+
+Phase A excludes a local process or principal with write access to `models_dir` or any ancestor while
+verification and analysis run. The admitted adversaries in C.1–C.3 supply registry/wire data, network
+responses, upstream artifacts, or backend output; they do not control host filesystem namespace or
+model bytes after verification. `ModelStore::Files` therefore treats symlinked and shared-writable
+roots as **deployment misconfiguration signals**, not as dirfd-bound containment.
+
+The realistic revocation is a later deployment mounting `models_dir` from a shared volume writable by
+another workload. Under that precondition, pathname replacement and mutation through another hardlink
+can change what the backend reopens after Ruby verification. Closing that different adversary requires
+native `openat`/`renameat`, an immutable snapshot, or descriptor handoff; it is tracked in
+[mood_probe#2](https://github.com/Lhosb/mood_probe/issues/2).
+
+**Phase E DoD:** close mood_probe#2 before admitting any deployment where an untrusted local process
+can write the model root or its ancestors, and demonstrate that the backend consumes the verified
+directory snapshot or file identity rather than reopening an unbound pathname.
 
 ---
 
