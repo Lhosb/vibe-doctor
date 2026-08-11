@@ -377,8 +377,15 @@ without reservation — `principal.md` §4.1's `getattr(es, name)(**params)` was
   the check is mandatory. This is defence in depth against hostile **wire data**, not a guarantee that
   Python opens the inode Ruby verified: canonicalise/check/open is itself pathname-based and has a
   TOCTOU window. Slice 3 must preserve the check without claiming it closes the host-adversary class.
-- **(c) Per-algorithm param whitelist.** Each enum entry declares permitted `params` keys and value
-  types. Otherwise `params` is kwargs injection into native code.
+- **(c) Per-algorithm param whitelist.** Each enum entry declares permitted `params` **keys**, value
+  **types**, and value **domains** — enumerated values, numeric ranges, and cross-parameter
+  constraints. Types alone are insufficient for this constraint's own purpose: `(int, float)` on
+  `minTempo` admits `NaN`, `±Infinity` and `1e309` — the last being standards-valid JSON that
+  overflows to `inf` — all of which reach native kwargs. Types are pinned to upstream's **declared**
+  type, never a permissive superset: Essentia declares `minTempo`/`maxTempo` as **integer** and
+  rejects floats only after import. Domains must exclude non-finite values and magnitudes
+  unreachable in the declared type. Verification of these declarations is §C.6. Otherwise `params`
+  is kwargs injection into native code.
 - **(d) `schema_version` handshake** — already in `principal.md` §3.2; restated here as a *security*
   mechanism, since exit 2 → `ConfigurationError` (`essentia_python.rb:140`) → `FatalError`
   (`errors.rb:12`) → batch abort at preflight (`enrichment.rake:49`).
@@ -485,6 +492,38 @@ native `openat`/`renameat`, an immutable snapshot, or descriptor handoff; it is 
 **Phase E DoD:** close mood_probe#2 before admitting any deployment where an untrusted local process
 can write the model root or its ancestors, and demonstrate that the backend consumes the verified
 directory snapshot or file identity rather than reopening an unbound pathname.
+
+### C.6 Upstream facts hardcoded in the gem
+
+Two facts now live in the gem that are true only because upstream says so: `classes` (§E.5) and the
+§C.1(c) parameter domains. This section states the rule for both, and for the third instance when it
+arrives.
+
+**Pin to a named upstream version and verify against the strongest surface that version exposes.**
+Strongest first:
+
+1. **Real construction against the live library** — tests the binary, not a description of it.
+2. **Structured introspection** (`parameterNames`, `paramType`, `paramValue`) — machine-checkable,
+   but describes declarations rather than behaviour.
+3. **Documented text** (`__doc__`) — weakest: not machine-checked, and free to drift from the binary
+   it documents.
+
+Use the strongest surface **available for that fact**, and record in the spec **which surface was
+used and why anything weaker was chosen**. Naming the surface is what lets a later reviewer tell a
+legitimate downgrade from a silent one. Where no surface exists — Essentia's 20 BPM
+`maxTempo − minTempo` interval rule has no API and no doc entry — real construction is the only
+option and is therefore mandatory, not optional.
+
+**Known weakness, recorded rather than implied.** Essentia is pinned to `2.1-beta6-dev`. That is a
+**development version string and does not uniquely identify a build**: two builds can report it and
+the cross-check would follow the newer one silently. The domain check is weaker than §E.5's
+`classes` gate in four ways — no independent copy of upstream truth in the repo, no SHA-256, a
+version string with no fetch date, and it runs only in `essentia_offline`, so drift is invisible on
+a laptop. The E.5-shaped closure — a committed introspection snapshot with its digest, a non-Docker
+spec asserting the gem's constants against the snapshot, and the Docker spec asserting the snapshot
+against the live library — turns drift into a red spec on a developer machine, the same conversion
+§C.1(e) makes for the capability cross-check (line 386-388). **Carried by mood_probe#3 and Phase B
+DoD item B8**, alongside §E.5's upstream-JSON gate, which is the same pattern on the other fact.
 
 ---
 
@@ -1138,6 +1177,10 @@ criteria of its own rather than prose scattered across four sections.
       SHA-256 and fetch date in the registry row; a **non-network** spec asserts
       `Model#classes == JSON.parse(file)["classes"]` row-by-row. Reviewers check each row against
       **its own** JSON, never the neighbouring row. *(Four of ten heads are positive-second.)*
+- [ ] **B8** The E.5-shaped closure — a committed introspection snapshot with its digest, a
+      non-Docker spec asserting the gem's constants against the snapshot, and the Docker spec
+      asserting the snapshot against the live library — turns drift into a red spec on a developer
+      machine, the same conversion §C.1(e) makes for the capability cross-check (line 386-388).
 - [ ] **B3** The Phase A goldens re-run **unchanged**. Any movement in the existing six means the
       embedding cache is broken.
 - [ ] **B4** A vibe-doctor spec: Phase B's registry, with **only the six committed `.pb` files
