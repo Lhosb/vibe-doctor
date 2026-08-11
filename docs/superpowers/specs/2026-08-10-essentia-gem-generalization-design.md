@@ -495,9 +495,10 @@ directory snapshot or file identity rather than reopening an unbound pathname.
 
 ### C.6 Upstream facts hardcoded in the gem
 
-Two facts now live in the gem that are true only because upstream says so: `classes` (§E.5) and the
-§C.1(c) parameter domains. This section states the rule for both, and for the third instance when it
-arrives.
+At least two upstream facts live in the gem, most visibly `classes` (§E.5) and the §C.1(c) parameter
+domains. The registry also hardcodes framework versions, graph node names and `sample_rate: 16_000`.
+The node names self-verify at graph construction; the sample rate has no declaration-level check and
+would surface only as an undiagnosed golden mismatch. This section states the rule for every instance.
 
 **Pin to a named upstream version and verify against the strongest surface that version exposes.**
 Strongest first:
