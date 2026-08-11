@@ -105,9 +105,15 @@ Infrastructure commit (dependabot ignore, ci.yml fix, frozen baseline) MUST SURV
 3. mood_probe gets its OWN CI in Phase A — four jobs per §F.3.
 
 ## NEXT — blocked on the user
-HUMAN CHECKPOINT: user reads the requirement + §J.4 and signs off. Not delegable, not yet passed.
-On sign-off: dispatch Phase A to the Implementer (Rivet), infrastructure commit first, then behaviour.
-Order of work per §J.1 — the two pre-code specs (frozen baseline E.1, mapper identity E.2) are writable
-BEFORE any Phase A code exists; treat their absence in the first commit as the flag.
-Optional, user's call: commit the design to docs/superpowers/specs/2026-08-10-essentia-gem-generalization-design.md
-(would be delegated — I do not write repo files), and file the backfill workstream as a GitHub issue.
+COMMITTED: design + full four-round review record, branch docs/essentia-gem-v2-design @ a385f5b.
+Not pushed, no PR — publishing is the user's call; the repo is public.
+Authoritative design: docs/superpowers/specs/2026-08-10-essentia-gem-generalization-design.md.
+§J.4 is the standalone Phase A definition of done.
+TIER-1 HUMAN CHECKPOINT: STILL NOT PASSED. No implementation authorized. Not delegable; do not skip.
+On sign-off: Phase A to the Implementer, infrastructure commit first then behaviour, per §J.3.
+The two pre-code specs from §J.1 — frozen baseline E.1 and mapper identity E.2 — are writable before
+any Phase A code exists; treat their absence in the first commit as the flag.
+OPEN / UNOWNED: file the backfill workstream as a GitHub issue. User decision 2 put it out of scope;
+§H states what Phase B needs from it.
+`/tmp/maestri-reviews/ESSENTIA-GEM-V2/` is referenced nowhere in this tree; assume it is gone.
+The repo is now the only copy.
