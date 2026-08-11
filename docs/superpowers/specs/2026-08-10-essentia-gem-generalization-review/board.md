@@ -115,5 +115,5 @@ The two pre-code specs from §J.1 — frozen baseline E.1 and mapper identity E.
 any Phase A code exists; treat their absence in the first commit as the flag.
 OPEN / UNOWNED: file the backfill workstream as a GitHub issue. User decision 2 put it out of scope;
 §H states what Phase B needs from it.
-`/tmp/maestri-reviews/ESSENTIA-GEM-V2/` is referenced nowhere in this tree; assume it is gone.
+The former session-local ESSENTIA-GEM-V2 review directory is referenced nowhere in this tree; assume it is gone.
 The repo is now the only copy.
