@@ -428,6 +428,8 @@ import attempted. Both run on a Mac.
   un-enumerated (§K). My justification — "Phase A is where `byte_length` lands and where the new CI
   first exercises `models fetch`" — is a reason it *can* go there, not a reason it *must*.
   **Moved to its own commit, landable any time before Phase E.**
+  **Phase E DoD:** close [mood_probe#1](https://github.com/Lhosb/mood_probe/issues/1) by landing the
+  HTTPS host allowlist, explicit timeouts, and streaming `byte_length` bound described above.
 
   Phase A therefore ships `byte_length` as a **knowingly inert field**: recorded in every `Model` row,
   enforced by nothing until the downloader commit lands. That is stated here rather than left for
