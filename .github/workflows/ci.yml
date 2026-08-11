@@ -108,16 +108,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Lint Essentia CI script
+        run: shellcheck bin/essentia-ci
+
       - name: Build Essentia test image
         run: docker build --platform linux/amd64 -t vibe-doctor-essentia-goldens .
 
       - name: Run Essentia golden specs
         run: |
-          # Expected examples = golden fixture count + one undecodable-audio example.
+          # This job intentionally has no database. Essentia specs must stay Rails-free;
+          # add a database-backed job instead if a future Essentia gate requires rails_helper.
           docker run --rm --platform linux/amd64 --entrypoint bash \
             -e ESSENTIA_SPECS=1 -e RAILS_ENV=test \
             vibe-doctor-essentia-goldens \
-            -c 'expected=$(($(ls spec/fixtures/mood_probe/golden/*.json | wc -l) + 1)); \
-              output=$(bundle exec rspec spec/integration/essentia_extract_golden_spec.rb --format documentation); \
-              status=$?; printf "%s\n" "$output"; \
-              test "$status" -eq 0 && grep -qE "^${expected} examples, 0 failures$" <<< "$output"'
+            /rails/bin/essentia-ci

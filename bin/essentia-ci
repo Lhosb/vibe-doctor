@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Keep this gate in a checked-in script: three review rounds found Bash defects
+# hidden by YAML, Docker, and nested quoting. ShellCheck and direct tests must
+# cover the script before it runs in the no-database Essentia CI job.
+
+discovery_file=$(mktemp)
+trap 'rm -f "$discovery_file"' EXIT
+
+if ! find spec -type f -name "*_spec.rb" -print0 > "$discovery_file"; then
+  echo "Failed to discover Essentia spec candidates" >&2
+  exit 1
+fi
+
+spec_files=()
+while IFS= read -r -d "" path; do
+  if grep -Eq "(:essentia\b|essentia:[[:space:]]*true\b)" -- "$path"; then
+    spec_files+=("$path")
+  else
+    grep_status=$?
+    if test "$grep_status" -ne 1; then
+      echo "Failed to inspect Essentia spec candidate: $path" >&2
+      exit "$grep_status"
+    fi
+  fi
+done < "$discovery_file"
+
+test "${#spec_files[@]}" -gt 0
+
+for path in "${spec_files[@]}"; do
+  if grep -q "rails_helper" -- "$path"; then
+    echo "Essentia specs must remain Rails-free in this no-database job: $path" >&2
+    exit 1
+  else
+    grep_status=$?
+    if test "$grep_status" -ne 1; then
+      echo "Failed to verify Rails-free Essentia spec: $path" >&2
+      exit "$grep_status"
+    fi
+  fi
+done
+
+fixtures=$(find spec/fixtures/mood_probe/golden -maxdepth 1 -type f -name "*.json" | wc -l)
+floor=$((fixtures + 1))
+dry_run=$(bundle exec rspec "${spec_files[@]}" --tag essentia --dry-run --format json)
+expected=$(printf "%s" "$dry_run" | ruby -rjson -e '
+  data = JSON.parse(STDIN.read)
+  summary = data.fetch("summary")
+  abort "Essentia dry run contained failures" unless summary.fetch("failure_count").zero?
+  abort "Essentia dry run contained load errors" unless summary.fetch("errors_outside_of_examples_count").zero?
+  descriptions = data.fetch("examples").map { |example| example.fetch("full_description") }
+  fixtures = Dir["spec/fixtures/mood_probe/golden/*.json"].map { |path| File.basename(path, ".json") }
+  missing = fixtures.reject do |fixture|
+    pattern = /\b#{Regexp.escape(fixture)}\b/
+    descriptions.any? { |description| description.match?(pattern) }
+  end
+  abort "Golden fixtures without an Essentia example: #{missing.join(", ")}" unless missing.empty?
+  puts summary.fetch("example_count")
+')
+
+test "$expected" -ge "$floor"
+
+set +e
+output=$(bundle exec rspec "${spec_files[@]}" --tag essentia --format documentation)
+status=$?
+set -e
+
+printf "%s\n" "$output"
+test "$status" -eq 0
+grep -qE "^${expected} examples, 0 failures$" <<< "$output"
