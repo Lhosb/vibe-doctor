@@ -464,11 +464,17 @@ import attempted. Both run on a Mac.
 
 ### C.5 Host filesystem threat model
 
+Path attacks reachable from registry data alone are in scope: traversal during path joins, symlinked
+final artifacts, and symlinked or swapped predictable temporary paths are closed in
+`ModelStore::Files`. The boundary is whether exploitation requires a pre-existing local write
+primitive, not whether the vulnerable operation touches the model filesystem.
+
 Phase A excludes a local process or principal with write access to `models_dir` or any ancestor while
 verification and analysis run. The admitted adversaries in C.1–C.3 supply registry/wire data, network
 responses, upstream artifacts, or backend output; they do not control host filesystem namespace or
-model bytes after verification. `ModelStore::Files` therefore treats symlinked and shared-writable
-roots as **deployment misconfiguration signals**, not as dirfd-bound containment.
+model bytes after verification. `ModelStore::Files` therefore treats roots not owned by the current
+user, symlinked roots, and group/world-writable roots as **deployment misconfiguration signals**, not
+as dirfd-bound containment.
 
 The realistic revocation is a later deployment mounting `models_dir` from a shared volume writable by
 another workload. Under that precondition, pathname replacement and mutation through another hardlink
