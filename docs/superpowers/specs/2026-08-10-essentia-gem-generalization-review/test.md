@@ -564,7 +564,7 @@ main working tree; the fresh-worktree asset-precompile caveat in the dispatch di
 ## §F. Evidence
 
 **Reports read in full:** `/Users/lukeolson/Downloads/mood_probe_gem_brainstorm_prompt.md`;
-`/tmp/maestri-reviews/ESSENTIA-GEM-V2/principal.md` (all 1278 lines);
+`docs/superpowers/specs/2026-08-10-essentia-gem-generalization-review/principal-draft.md` (all 1278 original lines; repository copy has a +4-line supersession header);
 `docs/superpowers/specs/2026-08-10-essentia-gem-generalization-review/security.md` (all 247 lines);
 `docs/superpowers/specs/2026-08-10-essentia-gem-generalization-review/inventory.md` (all 407 lines);
 `docs/superpowers/specs/2026-08-10-essentia-gem-generalization-review/board.md`. Also read

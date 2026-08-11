@@ -562,7 +562,7 @@ dispatch explicitly asked me to adjudicate rather than escalate, and I have (M2)
 Both repos verified clean at the SHAs in the header.
 
 **Design documents read in full:** `/Users/lukeolson/Downloads/mood_probe_gem_brainstorm_prompt.md`;
-`/tmp/maestri-reviews/ESSENTIA-GEM-V2/principal.md` (all 1,278 lines, in two reads);
+`docs/superpowers/specs/2026-08-10-essentia-gem-generalization-review/principal-draft.md` (all 1,278 original lines, in two reads; repository copy has a +4-line supersession header);
 `docs/superpowers/specs/2026-08-10-essentia-gem-generalization-review/security.md` (all 247 lines);
 `docs/superpowers/specs/2026-08-10-essentia-gem-generalization-review/inventory.md` (all 407 lines).
 

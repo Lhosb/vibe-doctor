@@ -1,13 +1,13 @@
 Provenance: This is the round-4 amended ESSENTIA-GEM-V2 design; Phase A is its first shippable slice.
-The superseded first draft is not in this repository. The four-round review record is in
+The superseded first draft is retained in the companion review directory. The four-round review record is in
 `docs/superpowers/specs/2026-08-10-essentia-gem-generalization-review/`, and every MUST-FIX is closed.
 At writing, no implementation existed: vibe-doctor was at `0499d9c` and mood_probe at `5360f8f`,
 both clean. The Tier-1 human checkpoint in section J.4 had not passed, so implementation was not authorized.
 
 # Principal design v2 — ESSENTIA-GEM-V2 (Round 3 revision)
 
-Supersedes `/tmp/maestri-reviews/ESSENTIA-GEM-V2/principal.md`, which is preserved unchanged for
-diffing. **Design only — no production code, no commits, no source-file change in either repo.**
+Supersedes `docs/superpowers/specs/2026-08-10-essentia-gem-generalization-review/principal-draft.md`, retained for
+line-cited review context and diffing. **Design only — no production code, no commits, no source-file change in either repo.**
 Date: 2026-08-10. Reviewer/author: Keystone (Principal Engineer).
 
 | Repo | HEAD at time of reading |
