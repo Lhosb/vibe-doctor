@@ -1,6 +1,8 @@
 module MoodVectors
   class EssentiaMapper
-    # mood_probe registry.rb default_descriptors at v0.2.0 (peeled SHA 848f6894a6022b5a32ae2b6b0c6898ac84986fa0).
+    # Source citation, not a machine check: mood_probe registry.rb default_descriptors at v0.2.0,
+    # peeled SHA 848f6894a6022b5a32ae2b6b0c6898ac84986fa0. Slice 5b adds the construction assertion
+    # that this set is a subset of MoodProbe::Registry.default.ids after the gem is pinned.
     DESCRIPTORS = %i[
       valence_emomusic
       arousal_emomusic
@@ -10,6 +12,8 @@ module MoodVectors
       mood_happy
     ].freeze
 
+    # Inputs are expected to have passed mood_probe's loud registry range validation upstream;
+    # clamping here is normalization, not malformed-output validation.
     def call(descriptors)
       validate_descriptors!(descriptors)
 
