@@ -55,6 +55,8 @@ RSpec.describe "Essentia extraction goldens", :essentia do
           absolute_deviation / expected_value.abs
         end
         tolerance = [ GOLDEN_REL_TOL * expected_value.abs, GOLDEN_ABS_FLOOR ].max
+        puts "#{fixture_name}.#{head}: abs #{format("%.3e", absolute_deviation)}, " \
+             "rel #{format("%.3e", relative_deviation)}, tolerance #{format("%.3e", tolerance)}"
 
         [ head, { actual: actual_value, expected: expected_value, absolute_deviation:, relative_deviation:, tolerance: } ]
       end
