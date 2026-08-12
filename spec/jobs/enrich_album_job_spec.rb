@@ -98,7 +98,12 @@ RSpec.describe EnrichAlbumJob, type: :job do
 
   it "preflights before matching audio and makes zero HTTP calls on configuration failure" do
     Dir.mktmpdir do |models_dir|
-      empty_extractor = MoodProbe::Extractor.new(models_dir:)
+      backend = instance_double(
+        MoodProbe::Backends::EssentiaPython,
+        preflight_environment!: true,
+        preflight_plan!: true
+      )
+      empty_extractor = MoodProbe::Extractor.new(models_dir:, backend:)
       expect(mood_grounder).not_to receive(:ground)
       expect(Faraday).not_to receive(:get)
 
