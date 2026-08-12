@@ -14,6 +14,7 @@ RSpec.describe MoodVectors::EssentiaMapper do
     end
 
     it "maps native descriptor values to symbol-keyed mood heads" do
+      # The arousal override keeps valence/arousal transposition detectable despite equal helper defaults.
       descriptors = descriptors_with(arousal_emomusic: 3.0)
 
       expect(described_class.new.call(descriptors)).to eq(
@@ -49,7 +50,7 @@ RSpec.describe MoodVectors::EssentiaMapper do
       expect(below_range.fetch(:arousal)).to eq(0.0)
     end
 
-    it "clamps softmax heads to the MoodVector range" do
+    it "clamps softmax heads to the MoodVector range", :aggregate_failures do
       descriptors = descriptors_with(
         danceability: 1.1,
         mood_acoustic: -0.1,
