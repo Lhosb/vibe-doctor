@@ -174,15 +174,15 @@ RSpec.describe MoodGroundingService do
   end
 
   it "records Faraday failures as track evidence" do
-    track_errors = []
+    track_omissions = []
     stub_request(:get, "https://example.com/missing.m4a").to_return(status: 404)
 
     result = service.send(
-      :analyze_remote_track, "https://example.com/missing.m4a", track_errors:
+      :analyze_remote_track, "https://example.com/missing.m4a", track_omissions:, track_number: 1
     )
 
     expect(result).to be_nil
-    expect(track_errors).to contain_exactly(an_instance_of(Faraday::Error))
+    expect(track_omissions.map(&:error)).to contain_exactly(an_instance_of(Faraday::Error))
   end
 
   it "degrades silently when YouTube is disabled after uniform iTunes failures" do
@@ -235,7 +235,7 @@ RSpec.describe MoodGroundingService do
     expect(result[:spread][:valence]).to eq(0.0)
     expect(Rails.logger).to have_received(:error)
       .with(
-        /album_id=#{album.id}.*source=iTunes.*error=MoodProbe::MalformedOutputError.*attempted=2 contributing=1/
+        /album_id=#{album.id}.*source=iTunes.*track_number=1.*error=MoodProbe::MalformedOutputError.*attempted=2 contributing=1/
       )
     expect(Rails.logger).to have_received(:info)
       .with(/album_id=#{album.id}.*source=iTunes.*attempted=2 contributing=1/)

@@ -2,6 +2,7 @@ require "securerandom"
 
 class MoodGroundingService
   class SystematicTrackFailure < MoodProbe::FatalError; end
+  TrackOmission = Data.define(:error, :track_number)
 
   def initialize(
     itunes_matcher: ItunesPreviewMatcher.new,
@@ -52,13 +53,15 @@ class MoodGroundingService
 
     on_matched.call
 
-    track_errors = []
-    track_coords = previews.filter_map { |preview| analyze_remote_track(preview.preview_url, track_errors:) }
+    track_omissions = []
+    track_coords = previews.each_with_index.filter_map do |preview, index|
+      analyze_remote_track(preview.preview_url, track_omissions:, track_number: index + 1)
+    end
     log_track_omissions(
-      album:, source: "iTunes", track_errors:,
+      album:, source: "iTunes", track_omissions:,
       attempted_count: previews.size, contributing_count: track_coords.size
     )
-    failure = systematic_track_failure(track_coords, track_errors, previews.size, source: "iTunes")
+    failure = systematic_track_failure(track_coords, track_omissions, previews.size, source: "iTunes")
     return [ nil, failure ] if track_coords.empty?
 
     [
@@ -81,13 +84,15 @@ class MoodGroundingService
 
     paths = clip_paths.compact
     begin
-      track_errors = []
-      track_coords = paths.filter_map { |clip_path| analyze_local_track(clip_path, track_errors:) }
+      track_omissions = []
+      track_coords = paths.each_with_index.filter_map do |clip_path, index|
+        analyze_local_track(clip_path, track_omissions:, track_number: index + 1)
+      end
       log_track_omissions(
-        album:, source: "YouTube", track_errors:,
+        album:, source: "YouTube", track_omissions:,
         attempted_count: paths.size, contributing_count: track_coords.size
       )
-      failure = systematic_track_failure(track_coords, track_errors, paths.size, source: "YouTube")
+      failure = systematic_track_failure(track_coords, track_omissions, paths.size, source: "YouTube")
       return [ nil, failure ] if track_coords.empty?
 
       [
@@ -100,7 +105,7 @@ class MoodGroundingService
     end
   end
 
-  def analyze_remote_track(preview_url, track_errors:)
+  def analyze_remote_track(preview_url, track_omissions:, track_number:)
     dest_path = Rails.root.join("tmp", "vibe_doctor_itunes_#{SecureRandom.hex}.audio")
     response = Faraday.get(preview_url) { |request| request.options.timeout = 15 }
     raise Faraday::Error, "download failed: #{response.status}" unless response.success?
@@ -109,26 +114,27 @@ class MoodGroundingService
     analysis = @feature_extractor.analyze(dest_path, descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
     MoodVectors::EssentiaMapper.new.call(analysis.to_h.transform_values(&:value))
   rescue MoodProbe::TrackError => e
-    track_errors << e
+    track_omissions << TrackOmission.new(error: e, track_number:)
     nil
   rescue Faraday::Error => e
-    track_errors << e
+    track_omissions << TrackOmission.new(error: e, track_number:)
     nil
   ensure
     File.delete(dest_path) if File.exist?(dest_path)
   end
 
-  def analyze_local_track(clip_path, track_errors:)
+  def analyze_local_track(clip_path, track_omissions:, track_number:)
     analysis = @feature_extractor.analyze(clip_path, descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
     MoodVectors::EssentiaMapper.new.call(analysis.to_h.transform_values(&:value))
   rescue MoodProbe::TrackError => e
-    track_errors << e
+    track_omissions << TrackOmission.new(error: e, track_number:)
     nil
   ensure
     File.delete(clip_path) if File.exist?(clip_path)
   end
 
-  def systematic_track_failure(track_coords, track_errors, track_count, source:)
+  def systematic_track_failure(track_coords, track_omissions, track_count, source:)
+    track_errors = track_omissions.map(&:error)
     faraday_failures = track_errors.count { |error| error.is_a?(Faraday::Error) }
     analyzable = track_count - faraday_failures
     probe_errors = track_errors.reject { |error| error.is_a?(Faraday::Error) }
@@ -152,12 +158,13 @@ class MoodGroundingService
     raise SystematicTrackFailure, "#{itunes_failure}; #{youtube_failure}"
   end
 
-  def log_track_omissions(album:, source:, track_errors:, attempted_count:, contributing_count:)
-    track_errors.each do |error|
+  def log_track_omissions(album:, source:, track_omissions:, attempted_count:, contributing_count:)
+    track_omissions.each do |omission|
+      error = omission.error
       Rails.logger.error(
         "Mood grounding omitted track: album_id=#{album.id} album_title=#{album.title.inspect} " \
-        "source=#{source} error=#{error.class} attempted=#{attempted_count} contributing=#{contributing_count} " \
-        "message=#{error.message.inspect}"
+        "source=#{source} track_number=#{omission.track_number} error=#{error.class} " \
+        "attempted=#{attempted_count} contributing=#{contributing_count} message=#{error.message.inspect}"
       )
     end
   end

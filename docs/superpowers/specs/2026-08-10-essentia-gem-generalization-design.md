@@ -38,7 +38,7 @@ residuals folded in. Nothing else in this document changed.
 | **2** | **The sample rate is no longer unknown.** Essentia's reference page states `RhythmExtractor2013` requires **44100 Hz** outright; I re-fetched and confirmed it verbatim. The `loads` gate is **pinned now at two entries**, Risk 1 downgrades from an unknown to a cost question, and the measurement reframes to "does resampling change the answer?". | §E.7, §L Risk 1, §M.2 |
 | **3** | **Misattribution corrected.** §A.2 credited the clamp mechanization to §E.2's *identity* spec. It is the **boundary** spec that does the work — E.1's own precondition records the clamp was inert on all eight goldens, so the identity spec cannot exercise it. | §A.2 |
 | **4** | **Streaming-downloader rewrite moved out of Phase A.** It is the one piece of Phase A's growth that is genuinely new work and that nothing else waits on. `byte_length` (and `license`/`attribution`/`pack`) stay in Phase A. | §C.3, §J.2, §K |
-| **5** | **Phase A's app work lands as ≥2 commits.** Three of the sixteen items are guardrails that must survive a rollback. Rollback reverts the *behaviour* commit only. | §J.3, §J.5 |
+| **5** | **Phase A's app work lands as ≥2 commits.** Three of the seventeen items are guardrails that must survive a rollback. Rollback reverts the *behaviour* commit only. | §J.3, §J.5 |
 | **6** | **Three test-side residuals closed:** R1 freeze the baseline in **both** repos and name which owns the invariance claim; R2 put the 44.1 kHz fixture in the **gem**, where its gate runs; R3 give the baseline a **retirement procedure**. | §E.1, §E.7, §J.2 |
 | **7** | **Both dispute outcomes recorded**, including the condition attached to dispute 2 and the Phase C offer that lets `voice_instrumental` earn a real gate. | §M.1, §J.6 |
 | **8** | **Readiness statement** and a **standalone Phase A definition of done** that does not require holding this document in context. | §M.3, §J.4 |
@@ -1051,7 +1051,7 @@ the Round-4 commit split in the first column:
 | 16 | **B** | `spec/fixtures/mood_probe/golden/PROVENANCE.md` | **new** — records the live-extraction source closure, generating commit, and execution environment for the regenerated app goldens |
 
 **I = infrastructure commit, B = behaviour commit.** Items 7, 8a and 14 are guardrails and evidence,
-orthogonal to the behaviour change, and **must survive a rollback**. Landing all sixteen as one commit
+orthogonal to the behaviour change, and **must survive a rollback**. Landing all seventeen as one commit
 means a blanket revert removes the Dependabot `ignore` — the specific guard against the gem being
 re-shipped accidentally — at exactly the moment a botched deploy has just been rolled back and the gem
 tag is the thing you least want a bot advancing. Land **I first**, then **B**. Note item 15 no longer
@@ -1117,7 +1117,7 @@ behaviour change, not a preservation, and its consequence for the persisted albu
 - [ ] **A9** vibe-doctor gains `MoodVectors::EssentiaMapper` doing `(v − 1.0) / 8.0` **and
       `.clamp(0.0, 1.0)`**, plus a boot initializer asserting the gem's declared emomusic range still
       equals the mapper's.
-- [ ] **A10** All 16 app files in §J.3 updated, landed as **infrastructure commit then behaviour
+- [ ] **A10** All 17 app files in §J.3 updated, landed as **infrastructure commit then behaviour
       commit**; `Gemfile` pinned to `tag: "v0.2.0"`; Dependabot `ignore` added for `mood_probe`.
 
 #### Evidence — every gate below must have a state in which it fails
@@ -1392,7 +1392,7 @@ or is scheduled with a named home. §J.4 is a standalone definition of done — 
 
 Three things a reader should carry into implementation rather than discover:
 
-1. **Phase A is large.** ~14 gem items, 16 app files across two commits, 21 gates. It is the largest
+1. **Phase A is large.** ~14 gem items, 17 app files across two commits, 21 gates. It is the largest
    slice in the plan and it will not land in a day. It is still the right slice, because its
    alternative is not "a smaller Phase A" but "the same work discovered during Phase B, in
    production" — which M1 demonstrates concretely. Scale expectations, not scope.

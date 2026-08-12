@@ -1,7 +1,7 @@
 # mood_probe v0.2.0 golden provenance
 
 - Source: live extraction by `spec/fixtures/mood_probe/generate_goldens.rb`, which calls `MoodProbe::Extractor#analyze`; the values were extracted, not derived from the frozen baseline or copied from another golden directory.
-- Source closure: the generator's only file inputs are `audio/*.wav`; it has no code path that reads any fixture directory. It invokes `MoodProbe::Extractor#analyze` and writes the returned values.
+- Source closure: the measurement inputs are the audio fixtures under `audio/*.wav` and the six model weights under `tmp/essentia_models`; the weight SHA-256 digests are pinned by the mood_probe registry. The generator invokes `MoodProbe::Extractor#analyze` and writes the returned values. Neither the generator nor its extraction path reads baseline or golden JSON.
 - Generating commit: `5354b2928aa4bcd9f404e4ef90ae3effbd339ab1`.
 - Image: local image `vibe-doctor-essentia-slice5b-isolated`, built from the generating commit.
 - Measurement host and environment: an Apple Silicon arm64 Mac running an amd64 Linux Docker container through Docker Desktop emulation.
