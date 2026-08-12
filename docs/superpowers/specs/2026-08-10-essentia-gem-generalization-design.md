@@ -567,9 +567,12 @@ then inherits a baseline written *after* the change it was meant to check.
 
 **Fix.** Commit the four current golden files unchanged at
 `spec/fixtures/mood_probe/baseline_v0_1_0/*.json`, with a header comment stating they are frozen
-pre-`v0.2.0` output and must never be rewritten. Keep the algebraic spec **permanently**: four softmax
-heads `eq` the baseline; `(raw_emomusic − 1.0) / 8.0` within `max(1e-4·|expected|, 1e-10)` of the
-baseline. Cost: ~6 KB. Benefit: a one-shot migration check becomes a standing gate.
+pre-`v0.2.0` output and must never be rewritten. Keep the algebraic spec **permanently**: all six
+heads, with `(raw_emomusic − 1.0) / 8.0` for valence/arousal, within
+`max(1e-4·|expected|, 1e-10)` of the baseline. This restores the app's calibrated gate: the earlier
+`eq` requirement was an unsupported tightening that confused arithmetic-free gem code with
+bit-identical TensorFlow execution across CPU kernels. Cost: ~6 KB. Benefit: a one-shot migration
+check becomes a standing gate.
 
 **Placement note (SF-1 interaction):** put it in a **sibling** directory, not under `golden/`. The
 app's CI job derives its expected example count from
@@ -593,13 +596,17 @@ two repos (verified by the test reviewer), and §F.3 makes the gem's `essentia_g
 Commit `baseline_v0_1_0/` in **both** repos (the same ~6 KB), and state the division of labour, which
 follows Rule 6 exactly:
 
-- **vibe-doctor owns the invariance claim.** The algebraic gate — four heads `eq` the baseline,
-  `(raw − 1)/8` within tolerance — lives in the app, because the app's gate is the cross-environment
-  reproducibility gate and the app is where those numbers reach `MoodVector`.
-- **The gem's copy anchors its determinism claim.** The gem's `eq` gate asserts bit-identical output
-  *in a fixed image*; a post-refactor baseline would be legitimate for that purpose alone, but
-  freezing the pre-refactor bytes costs nothing and lets the algebraic gate run in both places. Run it
-  in both.
+- **vibe-doctor owns the invariance claim.** The six-head tolerance gate lives in the app because the
+  app is where those numbers reach `MoodVector`.
+- **The gem's copy anchors the same continuity claim at the extraction boundary.** Run the calibrated
+  six-head tolerance in both repos. A bit-identity claim requires a separately measured and recorded
+  execution environment; architecture naming alone does not establish one.
+
+The frozen directory also carries a sibling `PROVENANCE.md`. The JSON and original README remain
+byte-frozen; provenance records that the original bytes were measured in an amd64 container under
+Apple-Silicon Docker Desktop emulation and that the exact translation layer and CPU flags were not
+captured. An environment transition changes the observer, not the observed, and is never by itself a
+reason to retire or remeasure the baseline.
 
 **Retirement procedure — required, because a permanent gate with no documented exit gets deleted
 (R3).** Nothing in this plan should legitimately move these six numbers: Rule 4 forbids it for Phase B,
@@ -708,11 +715,11 @@ acceptance criterion**.
    and ships on human review of the table — which is a fact worth writing down rather than papering
    over with a gate that passes for the wrong reason.
 
-The existing six remain mechanically protected, and this deserves stating: §6.5 Rule 2 asserts the
-four softmax heads bit-identical against the frozen baseline, so a `positive_index → classes`
-transcription error surfaces as `p` vs `1−p` — orders of magnitude outside the `1e-4` relative
-tolerance (`spec/integration/essentia_extract_golden_spec.rb:24-25`, `:53`, `:68`) — and it runs
-automatically in `ci.yml:105-123`.
+The existing six remain mechanically protected, and this deserves stating: §6.5 Rule 2 checks all
+six heads against the frozen baseline at the calibrated `1e-4` relative / `1e-10` absolute floor, so
+a `positive_index → classes` transcription error surfaces as `p` vs `1−p` — orders of magnitude
+outside the tolerance (`spec/integration/essentia_extract_golden_spec.rb:24-25`, `:53`, `:68`) — and
+it runs automatically in `ci.yml:105-123`.
 
 ### E.6 Negative tests for both contract halves (MF-8, M8)
 
@@ -792,16 +799,15 @@ satisfy. Record an octave error (60 or 240) as a finding, never as a golden to u
 
 - **Production-format decode fixture** (44.1 kHz stereo AAC) for the decode path only — it is the one
   thing that would catch a `MonoLoader`/ffmpeg regression on real input. **Never in the numeric golden
-  set**: AAC encoders are not bit-reproducible across versions and the gem's exact-`eq` gate
-  (`spec/integration/essentia_golden_spec.rb:34`) would become environment-dependent.
+  set**: AAC encoders add a second, avoidable source of environment-dependent numerical drift.
 - **Tolerance controls per unit family**, not per descriptor: one set for `:probability`, one for
   `:bpm`, one absolute-tolerance set for `:lufs`/`:lu`. Record in the format the app spec already uses
   (`spec/integration/essentia_extract_golden_spec.rb:22-23`: perturbation size, fixture, head,
   outcome), with **both** a passing and a failing control.
 - **Write down why the two golden gates differ**, one line in each file. The test reviewer verified
   the two repos' golden JSONs are currently byte-identical, so the gates look redundant to anyone who
-  has not read Rule 6. The gem asserts its own determinism in a fixed image; the app asserts
-  cross-environment reproducibility.
+  has not read Rule 6. Both assert continuity at calibrated precision at different integration
+  boundaries. Any additional bit-identity claim must name and measure the full execution environment.
 
 ---
 
@@ -858,11 +864,19 @@ Mirror the shape of `vibe-doctor/.github/workflows/ci.yml`, triggers `pull_reque
 | --- | --- | --- | --- | --- |
 | `rspec` | `ubuntu-latest` | no | no | `bundle exec rspec` — planner assertions, plan fixture, `python_seam_spec.rb`, registry introspection, `:series` tripwire, capability cross-check, negative contract specs, mapper-adjacent Ruby specs. Blocking. |
 | `essentia_offline` | `ubuntu-latest` | yes (`Dockerfile.essentia`, amd64 native) | **no** | The empty-models-dir proof (§F.2) + the sample-rate measurement gate (§E.7). Blocking. |
-| `essentia_golden` | `ubuntu-latest` | yes | yes (`models fetch`) | The gem's exact-`eq` golden spec. Blocking, with the upstream-availability dependency stated in the workflow comment. |
+| `essentia_golden` | `ubuntu-latest` | yes | yes (`models fetch`) | Native x86_64 capture, then the calibrated six-head golden comparison. Blocking. |
 | `lint` | `ubuntu-latest` | no | no | `bundle exec rubocop`. |
 
 Splitting `essentia_offline` from `essentia_golden` is the point of the table: it keeps the strongest
 gate free of the one dependency that can make it flaky.
+
+`essentia_golden` exposes four named failure surfaces: transport (upstream unavailable), digest
+(upstream checksum drift), environment capture (the environment could not run the code), and numeric
+comparison (the assertion ran and failed). **A gate failure surface must distinguish "the assertion
+ran and failed" from "the assertion never ran".** This is the fail-side twin of a vacuous green.
+Native x86_64 is detected using `/proc/cpuinfo`'s CPU identifier as well as the ISA: amd64 names an
+ISA, while a numerical execution environment requires the CPU and translation details that select
+kernels.
 
 **Also in Phase A (SF-1): fix the app's example-count arithmetic.** `ci.yml:121` computes
 `expected=$(($(ls spec/fixtures/mood_probe/golden/*.json | wc -l) + 1))` and greps for
@@ -906,8 +920,8 @@ upstream bytes, never redistribute modified weights.
 Backfill is a separate ticket. I am not designing the mechanism. Three statements the separate ticket
 needs:
 
-**1. Phase A requires no backfill, and this must be written down** (S4). §6.5 Rule 2 asserts four heads
-bit-identical and two algebraically identical to the frozen baseline — *that is the evidence* that no
+**1. Phase A requires no backfill, and this must be written down** (S4). §6.5 Rule 2 asserts all six
+heads agree with the frozen baseline at the calibrated precision — *that is the evidence* that no
 re-enrichment is needed. Without saying so, someone will run `rake enrichment:reground_all` "to be
 safe," which loads `Album.all` and calls `reset_enrichment!` on **every** album unconditionally
 (`lib/tasks/enrichment.rake:23-24`), re-enriching the whole catalogue for zero benefit.
@@ -1028,7 +1042,7 @@ the Round-4 commit split in the first column:
 | 8 | **I** | `.github/workflows/ci.yml:117-123` | example-count arithmetic + spec selection (SF-1); app-side mirror of the empty-dir proof (F.2) |
 | 9 | **B** | `spec/services/mood_grounding_service_spec.rb:19`, `:193` | builds real `MoodProbe::Features` — replace with an `Analysis` builder |
 | 10 | **B** | `spec/support/phase3_parity.rb` | **delete** — compares against a script deleted at `96e546f`; E.1's baseline supersedes it (SF-8) |
-| 11 | **B** | `spec/fixtures/mood_probe/generate_goldens.rb:10`, `:15` | `analyze` arity + new payload shape |
+| 11 | **B** | `spec/fixtures/mood_probe/generate_goldens.rb:10`, `:15` | `analyze` arity + new payload shape; regeneration must run on detector-confirmed native x86_64, never Docker Desktop emulation |
 | 12 | **B** | `spec/integration/essentia_extract_golden_spec.rb:20`, `:38-39` | `MOOD_HEADS` constant → requested descriptor list; `analyze` arity |
 | 13 | **B** | `spec/jobs/enrich_album_job_spec.rb:99-114` | zero-arg `verify!` → `verify!(descriptors:)` (M1, N1) |
 | 14 | **I** | `spec/fixtures/mood_probe/baseline_v0_1_0/*.json` | **new** — frozen baseline (MF-1), with the retirement comment from §E.1 |
@@ -1061,7 +1075,7 @@ becomes a descriptor registry with typed results and an extraction planner. vibe
 itself. No database migration. No new persisted field. Gem `v0.2.0` and the app change deploy together.
 
 **Behaviour that must not change:** the six values written to `mood_vectors` for a given audio file,
-to within `1e-4` relative on valence/arousal and bit-identically on the four softmax heads.
+all within `max(1e-4·|expected|, 1e-10)` of the frozen baseline.
 
 #### Structure
 
@@ -1098,11 +1112,12 @@ to within `1e-4` relative on valence/arousal and bit-identically on the four sof
 #### Evidence — every gate below must have a state in which it fails
 
 - [ ] **G1** *(the load-bearing one)* Algebraic parity against the **frozen, unmodified**
-      `baseline_v0_1_0/` goldens: four softmax heads `eq` the baseline; `(raw_emomusic − 1.0) / 8.0`
-      within `max(1e-4·|expected|, 1e-10)`. **Run before any golden is rewritten.** The baseline is
+      `baseline_v0_1_0/` goldens: all six heads, with `(raw_emomusic − 1.0) / 8.0` for valence/arousal,
+      are within `max(1e-4·|expected|, 1e-10)`. **Run before any golden is rewritten.** The baseline is
       committed in both repos and never regenerated — retirement is a new dated directory, never an edit.
-- [ ] **G2** Mapper identity: golden → `Analysis` → `EssentiaMapper#call` equals the baseline hash, and
-      `keys == MoodVector::MOOD_HEADS`.
+- [ ] **G2** Mapper identity: golden → `Analysis` → `EssentiaMapper#call` has
+      `keys == MoodVector::MOOD_HEADS`, with every mapped value within
+      `max(1e-4·|expected|, 1e-10)` of the baseline hash.
 - [ ] **G3** Mapper clamp **boundaries**: `9.4 → 1.0` and `0.6 → 0.0`, with passing controls `9.0 → 1.0`
       and `1.0 → 0.0`. *(G2 cannot catch a dropped clamp — the clamp was inert on all eight goldens.)*
 - [ ] **G4** `plan_for([:bpm]).graphs` is empty, and a `[:bpm]` analysis against an **empty models dir**
