@@ -4,17 +4,17 @@ RSpec.describe MoodVectors::EssentiaMapper do
   describe "#call" do
     def descriptors_with(valence:)
       {
-        "valence_emomusic" => valence,
-        "arousal_emomusic" => 5.0,
-        "danceability" => 0.2,
-        "mood_acoustic" => 0.3,
-        "mood_relaxed" => 0.4,
-        "mood_happy" => 0.6
+        valence_emomusic: valence,
+        arousal_emomusic: 5.0,
+        danceability: 0.2,
+        mood_acoustic: 0.3,
+        mood_relaxed: 0.4,
+        mood_happy: 0.6
       }
     end
 
     it "maps native descriptor values to symbol-keyed mood heads" do
-      descriptors = descriptors_with(valence: 5.0).merge("arousal_emomusic" => 3.0)
+      descriptors = descriptors_with(valence: 5.0).merge(arousal_emomusic: 3.0)
 
       expect(described_class.new.call(descriptors)).to eq(
         valence: 0.5,
@@ -43,14 +43,28 @@ RSpec.describe MoodVectors::EssentiaMapper do
 
     it "clamps softmax heads to the MoodVector range" do
       descriptors = descriptors_with(valence: 5.0).merge(
-        "danceability" => 1.1,
-        "mood_acoustic" => -0.1
+        danceability: 1.1,
+        mood_acoustic: -0.1
       )
 
       result = described_class.new.call(descriptors)
 
       expect(result.fetch(:danceability)).to eq(1.0)
       expect(result.fetch(:mood_acoustic)).to eq(0.0)
+    end
+
+    it "rejects a missing descriptor" do
+      descriptors = descriptors_with(valence: 5.0).except(:mood_happy)
+
+      expect { described_class.new.call(descriptors) }
+        .to raise_error(ArgumentError, "missing descriptors: mood_happy")
+    end
+
+    it "rejects an unexpected descriptor" do
+      descriptors = descriptors_with(valence: 5.0).merge(bpm: 120.0)
+
+      expect { described_class.new.call(descriptors) }
+        .to raise_error(ArgumentError, "unexpected descriptors: bpm")
     end
   end
 end

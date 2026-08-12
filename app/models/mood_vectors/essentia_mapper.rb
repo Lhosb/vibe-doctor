@@ -1,6 +1,7 @@
 module MoodVectors
   class EssentiaMapper
-    DESCRIPTORS = %w[
+    # mood_probe registry.rb default_descriptors at v0.2.0 (peeled SHA 848f6894a6022b5a32ae2b6b0c6898ac84986fa0).
+    DESCRIPTORS = %i[
       valence_emomusic
       arousal_emomusic
       danceability
@@ -10,17 +11,29 @@ module MoodVectors
     ].freeze
 
     def call(descriptors)
+      validate_descriptors!(descriptors)
+
       {
-        valence: rescale_emomusic(descriptors.fetch("valence_emomusic")),
-        arousal: rescale_emomusic(descriptors.fetch("arousal_emomusic")),
-        danceability: clamp(descriptors.fetch("danceability")),
-        mood_acoustic: clamp(descriptors.fetch("mood_acoustic")),
-        mood_relaxed: clamp(descriptors.fetch("mood_relaxed")),
-        mood_happy: clamp(descriptors.fetch("mood_happy"))
+        valence: rescale_emomusic(descriptors.fetch(:valence_emomusic)),
+        arousal: rescale_emomusic(descriptors.fetch(:arousal_emomusic)),
+        danceability: clamp(descriptors.fetch(:danceability)),
+        mood_acoustic: clamp(descriptors.fetch(:mood_acoustic)),
+        mood_relaxed: clamp(descriptors.fetch(:mood_relaxed)),
+        mood_happy: clamp(descriptors.fetch(:mood_happy))
       }
     end
 
     private
+
+    def validate_descriptors!(descriptors)
+      missing = DESCRIPTORS - descriptors.keys
+      unexpected = descriptors.keys - DESCRIPTORS
+      problems = []
+      problems << "missing descriptors: #{missing.join(", ")}" if missing.any?
+      problems << "unexpected descriptors: #{unexpected.join(", ")}" if unexpected.any?
+
+      raise ArgumentError, problems.join("; ") if problems.any?
+    end
 
     def rescale_emomusic(value)
       clamp((value - 1.0) / 8.0)
