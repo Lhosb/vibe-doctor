@@ -4,6 +4,7 @@ RSpec.describe "mood_probe registry contract" do
   let(:registry) { MoodProbe::Registry.default }
 
   it "contains every descriptor consumed by the mapper" do
+    expect(MoodVectors::EssentiaMapper::DESCRIPTORS.size).to eq(6)
     expect(MoodVectors::EssentiaMapper::DESCRIPTORS).to all(be_in(registry.ids))
   end
 

@@ -1,7 +1,8 @@
 # mood_probe v0.2.0 golden provenance
 
 - Source: live extraction by `spec/fixtures/mood_probe/generate_goldens.rb`, which calls `MoodProbe::Extractor#analyze`; the values were extracted, not derived from the frozen baseline or copied from another golden directory.
-- Isolation: the only host directory mounted was `spec/fixtures/mood_probe/golden/`, at `/rails/spec/fixtures/mood_probe/golden`. Before extraction, the image's copy of `baseline_v0_1_0/` was moved outside `/rails` and its absence was verified, so the generator could not read it. The generator also has no baseline read or inverse-formula path.
+- Extraction code path: the committed generator reads only the audio fixtures, invokes `MoodProbe::Extractor#analyze`, and writes its returned values. It has no baseline or golden read, inverse formula, or copy path; this code-path constraint, not filesystem isolation, establishes that the output was extracted.
+- Mount and path inventory: the only host directory mounted was `spec/fixtures/mood_probe/golden/`, at `/rails/spec/fixtures/mood_probe/golden`. Before extraction, the image's app-repository copy of `baseline_v0_1_0/` was moved outside `/rails` and its absence there was verified. However, Bundler's complete git checkout remained under `/usr/local/bundle/ruby/4.0.0/bundler/gems/mood_probe-848f6894a602/`; it contained byte-identical copies of both `spec/fixtures/mood_probe/baseline_v0_1_0/chirp.json` and the target `spec/fixtures/mood_probe/golden/chirp.json`. No leak occurred because the generator has no code path that reads either copy.
 - Generating commit: `5354b2928aa4bcd9f404e4ef90ae3effbd339ab1`.
 - Image: local image `vibe-doctor-essentia-slice5b-isolated`, built from the generating commit.
 - Measurement host and environment: an Apple Silicon arm64 Mac running an amd64 Linux Docker container through Docker Desktop emulation.
