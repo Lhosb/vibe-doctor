@@ -1,9 +1,9 @@
 GIT
   remote: https://github.com/Lhosb/mood_probe.git
-  revision: 5360f8fd8609eae39edb5dfab8a07f6439a0b137
-  branch: main
+  revision: 848f6894a6022b5a32ae2b6b0c6898ac84986fa0
+  tag: v0.2.0
   specs:
-    mood_probe (0.1.0)
+    mood_probe (0.2.0)
 
 GEM
   remote: https://rubygems.org/
@@ -575,7 +575,7 @@ CHECKSUMS
   mini_magick (5.3.2) sha256=a7ef54b480b15283c396eb8343d9e088471f54b31d9974cb7e523cc57598609f
   mini_mime (1.1.5) sha256=8681b7e2e4215f2a159f9400b5816d85e9d8c6c6b491e96a12797e798f8bccef
   minitest (6.0.6) sha256=153ea36d1d987a62942382b61075745042a2b3123b1cd48f4c3675af9cc7d6f1
-  mood_probe (0.1.0)
+  mood_probe (0.2.0)
   msgpack (1.8.3) sha256=8bda4a6428d3244e50d6bd55854d354edbada88a4e1f4f5731a39a0f86bee6a1
   neighbor (1.2.0) sha256=29c4a6881ab7287c605cc252f72cd8d24546780e9e85efbea878362881e28196
   net-http (0.9.1) sha256=25ba0b67c63e89df626ed8fac771d0ad24ad151a858af2cc8e6a716ca4336996

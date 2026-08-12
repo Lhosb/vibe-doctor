@@ -1,0 +1,15 @@
+require "rails_helper"
+
+RSpec.describe "mood_probe registry contract" do
+  let(:registry) { MoodProbe::Registry.default }
+
+  it "contains every descriptor consumed by the mapper" do
+    expect(MoodVectors::EssentiaMapper::DESCRIPTORS).to all(be_in(registry.ids))
+  end
+
+  it "keeps both emomusic descriptors on the mapper's native range" do
+    ranges = %i[valence_emomusic arousal_emomusic].map { |id| registry.fetch(id).native_range }
+
+    expect(ranges).to eq(Array.new(2, MoodVectors::EssentiaMapper::EMOMUSIC_RANGE))
+  end
+end

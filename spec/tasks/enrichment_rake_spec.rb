@@ -55,7 +55,8 @@ RSpec.describe "enrichment:backfill rake task" do
 
     Rake::Task["enrichment:backfill"].invoke
 
-    expect(feature_extractor).to have_received(:verify!).once
+    expect(feature_extractor).to have_received(:verify!)
+      .with(descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS).once
     expect(EnrichAlbumJob).to have_received(:perform_now).with(pending, feature_extractor:).once
     expect(EnrichAlbumJob).not_to have_received(:perform_now).with(grounded, feature_extractor:)
   end
@@ -116,7 +117,9 @@ RSpec.describe "enrichment:backfill rake task" do
 
   it "aborts immediately when preflight fails without making iTunes HTTP calls" do
     album = Album.create!(master_id: 1, title: "Blocked")
-    allow(feature_extractor).to receive(:verify!).and_raise(MoodProbe::ConfigurationError, "bad models")
+    allow(feature_extractor).to receive(:verify!)
+      .with(descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
+      .and_raise(MoodProbe::ConfigurationError, "bad models")
     expect(EnrichAlbumJob).not_to receive(:perform_now)
     expect(Faraday).not_to receive(:get)
 
@@ -209,7 +212,9 @@ RSpec.describe "enrichment:reground_all rake task" do
 
   it "preflights before resetting any album" do
     grounded = Album.create!(master_id: 1, title: "Grounded").tap(&:start_matching!).tap(&:start_extracting!).tap(&:ground!)
-    allow(feature_extractor).to receive(:verify!).and_raise(MoodProbe::ConfigurationError, "bad models")
+    allow(feature_extractor).to receive(:verify!)
+      .with(descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
+      .and_raise(MoodProbe::ConfigurationError, "bad models")
 
     expect { Rake::Task["enrichment:reground_all"].invoke }
       .to raise_error(MoodProbe::ConfigurationError, "bad models")

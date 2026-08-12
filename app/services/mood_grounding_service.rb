@@ -90,7 +90,8 @@ class MoodGroundingService
     raise Faraday::Error, "download failed: #{response.status}" unless response.success?
 
     dest_path.binwrite(response.body)
-    @feature_extractor.analyze(dest_path).to_h
+    analysis = @feature_extractor.analyze(dest_path, descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
+    MoodVectors::EssentiaMapper.new.call(analysis.to_h.transform_values(&:value))
   rescue MoodProbe::TrackError => e
     track_errors << e
     Rails.logger.warn("iTunes-sourced track analysis failed for '#{preview_url}': #{e.message}")
@@ -104,7 +105,8 @@ class MoodGroundingService
   end
 
   def analyze_local_track(clip_path, track_errors:)
-    @feature_extractor.analyze(clip_path).to_h
+    analysis = @feature_extractor.analyze(clip_path, descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
+    MoodVectors::EssentiaMapper.new.call(analysis.to_h.transform_values(&:value))
   rescue MoodProbe::TrackError => e
     track_errors << e
     Rails.logger.warn("YouTube-sourced track analysis failed for '#{clip_path}': #{e.message}")

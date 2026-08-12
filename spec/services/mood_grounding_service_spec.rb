@@ -5,7 +5,16 @@ RSpec.describe MoodGroundingService do
   let(:itunes_matcher) { instance_double(ItunesPreviewMatcher) }
   let(:youtube_matcher) { instance_double(YoutubeClipMatcher) }
   let(:feature_extractor) { instance_double(MoodProbe::Extractor) }
-  let(:track) { { valence: 0.5, arousal: 0.5, danceability: 0.5, mood_acoustic: 0.5, mood_relaxed: 0.5, mood_happy: 0.5 } }
+  let(:raw_track) do
+    {
+      valence_emomusic: 5.0,
+      arousal_emomusic: 5.0,
+      danceability: 0.5,
+      mood_acoustic: 0.5,
+      mood_relaxed: 0.5,
+      mood_happy: 0.5
+    }
+  end
 
   subject(:service) do
     described_class.new(itunes_matcher: itunes_matcher, youtube_matcher: youtube_matcher, feature_extractor: feature_extractor)
@@ -15,8 +24,11 @@ RSpec.describe MoodGroundingService do
     ItunesPreviewMatcher::ItunesMatch.new(preview_url: url, match_confidence: confidence)
   end
 
-  def features(overrides = {})
-    MoodProbe::Features.new(track.merge(overrides))
+  def analysis(overrides = {})
+    MoodProbe::AnalysisBuilder.new(registry: MoodProbe::Registry.default).call(
+      requested: MoodVectors::EssentiaMapper::DESCRIPTORS,
+      raw_values: raw_track.merge(overrides)
+    )
   end
 
   before do
@@ -28,7 +40,7 @@ RSpec.describe MoodGroundingService do
       [ itunes_match("https://example.com/preview.m4a", 0.9), itunes_match("https://example.com/preview.m4a", 0.9) ]
     )
     allow(feature_extractor).to receive(:analyze).and_return(
-      features(valence: 0.2), features(valence: 0.8)
+      analysis(valence_emomusic: 2.6), analysis(valence_emomusic: 7.4)
     )
     matched_calls = 0
 
@@ -43,7 +55,7 @@ RSpec.describe MoodGroundingService do
 
   it "has zero spread for a single matched track" do
     allow(itunes_matcher).to receive(:find_previews).and_return([ itunes_match("https://example.com/preview.m4a", 0.9) ])
-    allow(feature_extractor).to receive(:analyze).and_return(features)
+    allow(feature_extractor).to receive(:analyze).and_return(analysis)
 
     result = service.ground(album)
 
@@ -53,7 +65,9 @@ RSpec.describe MoodGroundingService do
   it "falls through to YouTube when iTunes has no previews, without calling YouTube's matcher a second time" do
     allow(itunes_matcher).to receive(:find_previews).and_return([])
     allow(youtube_matcher).to receive(:find_clips).and_return([ "/tmp/clip.m4a" ])
-    allow(feature_extractor).to receive(:analyze).with("/tmp/clip.m4a").and_return(features)
+    allow(feature_extractor).to receive(:analyze)
+      .with("/tmp/clip.m4a", descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
+      .and_return(analysis)
     allow(File).to receive(:exist?).with("/tmp/clip.m4a").and_return(true)
     allow(File).to receive(:delete).with("/tmp/clip.m4a")
 
@@ -85,13 +99,28 @@ RSpec.describe MoodGroundingService do
     expect(service.ground(album)[:mood_source]).to eq("llm_only")
   end
 
+  it "logs and skips an out-of-sanity-range track" do
+    preview_url = "https://example.com/preview.m4a"
+    allow(itunes_matcher).to receive(:find_previews).and_return([ itunes_match(preview_url, 0.9) ])
+    allow(feature_extractor).to receive(:analyze)
+      .and_raise(MoodProbe::MalformedOutputError, "valence_emomusic is outside sanity range -3.0..13.0")
+    allow(youtube_matcher).to receive(:find_clips).and_return([])
+    allow(Rails.logger).to receive(:warn)
+
+    expect(service.ground(album)[:mood_source]).to eq("llm_only")
+    expect(Rails.logger).to have_received(:warn)
+      .with(/iTunes-sourced track analysis failed.*valence_emomusic is outside sanity range/)
+  end
+
   it "tries YouTube after multiple iTunes tracks fail uniformly" do
     allow(itunes_matcher).to receive(:find_previews).and_return(
       [ itunes_match("https://example.com/preview.m4a", 0.9), itunes_match("https://example.com/preview.m4a", 0.9) ]
     )
     allow(feature_extractor).to receive(:analyze).and_raise(MoodProbe::InferenceError, "boom")
     allow(youtube_matcher).to receive(:find_clips).and_return([ "/tmp/clip.m4a" ])
-    allow(feature_extractor).to receive(:analyze).with("/tmp/clip.m4a").and_return(features)
+    allow(feature_extractor).to receive(:analyze)
+      .with("/tmp/clip.m4a", descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
+      .and_return(analysis)
 
     expect(service.ground(album)[:mood_source]).to eq("essentia_youtube")
     expect(youtube_matcher).to have_received(:find_clips)
@@ -135,7 +164,9 @@ RSpec.describe MoodGroundingService do
       Array.new(2) { itunes_match("https://example.com/missing.m4a", 0.9) }
     )
     allow(youtube_matcher).to receive(:find_clips).and_return([ "/tmp/clip.m4a" ])
-    allow(feature_extractor).to receive(:analyze).with("/tmp/clip.m4a").and_return(features)
+    allow(feature_extractor).to receive(:analyze)
+      .with("/tmp/clip.m4a", descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
+      .and_return(analysis)
 
     expect(service.ground(album)[:mood_source]).to eq("essentia_youtube")
   end
@@ -190,7 +221,7 @@ RSpec.describe MoodGroundingService do
     call_count = 0
     allow(feature_extractor).to receive(:analyze) do
       call_count += 1
-      call_count == 1 ? raise(MoodProbe::InferenceError, "boom") : features
+      call_count == 1 ? raise(MoodProbe::InferenceError, "boom") : analysis
     end
 
     expect(service.ground(album)[:mood_source]).to eq("essentia_itunes")
@@ -238,7 +269,8 @@ RSpec.describe MoodGroundingService do
       paths = %w[one.m4a two.m4a].map { |name| File.join(directory, name) }
       paths.each { |path| File.binwrite(path, "audio") }
       allow(youtube_matcher).to receive(:find_clips).and_return(paths)
-      allow(feature_extractor).to receive(:analyze).with(paths.first)
+      allow(feature_extractor).to receive(:analyze)
+        .with(paths.first, descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
         .and_raise(MoodProbe::ConfigurationError, "bad models")
 
       expect { service.ground(album) }.to raise_error(MoodProbe::ConfigurationError, "bad models")

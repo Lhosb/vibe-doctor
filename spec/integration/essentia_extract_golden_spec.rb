@@ -17,7 +17,9 @@ RSpec.describe "Essentia extraction goldens", :essentia do
   AUDIO_DIR = ROOT.join("spec/fixtures/mood_probe/audio")
   GOLDEN_DIR = ROOT.join("spec/fixtures/mood_probe/golden")
   MODELS_DIR = ROOT.join("tmp/essentia_models")
-  MOOD_HEADS = %w[valence arousal danceability mood_acoustic mood_relaxed mood_happy].sort.freeze
+  DESCRIPTORS = %i[
+    valence_emomusic arousal_emomusic danceability mood_acoustic mood_relaxed mood_happy
+  ].freeze
   DECODABLE_FIXTURES = %w[chirp clicks sine_440 white_noise].freeze
   # Relative-bound heads are 10x tighter than Phase 4's 1e-3 ONNX gate; the floor-bound head is ~1.5x tighter.
   # Calibration control: a 0.900e-04 chirp.valence perturbation passed, while 1.100e-04 failed.
@@ -35,11 +37,11 @@ RSpec.describe "Essentia extraction goldens", :essentia do
       expect(audio_path).to exist
 
       expected = JSON.parse(GOLDEN_DIR.join("#{fixture_name}.json").read, symbolize_names: true)
-      features = extractor.analyze(audio_path)
-      actual = features.to_h
+      analysis = extractor.analyze(audio_path, descriptors: DESCRIPTORS)
+      actual = analysis.to_h.transform_values(&:value)
 
-      expect(actual.keys.map(&:to_s).sort).to eq(MOOD_HEADS)
-      expect(expected.keys.map(&:to_s).sort).to eq(MOOD_HEADS)
+      expect(actual.keys).to eq(DESCRIPTORS)
+      expect(expected.keys).to eq(DESCRIPTORS)
 
       comparisons = expected.to_h do |head, expected_value|
         actual_value = actual.fetch(head)
@@ -76,6 +78,8 @@ RSpec.describe "Essentia extraction goldens", :essentia do
     audio_path = AUDIO_DIR.join("undecodable.m4a")
     expect(audio_path).to exist
 
-    expect { extractor.analyze(audio_path) }.to raise_error(MoodProbe::UnreadableAudioError)
+    expect {
+      extractor.analyze(audio_path, descriptors: DESCRIPTORS)
+    }.to raise_error(MoodProbe::UnreadableAudioError)
   end
 end

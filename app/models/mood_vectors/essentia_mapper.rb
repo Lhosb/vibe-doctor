@@ -11,6 +11,7 @@ module MoodVectors
       mood_relaxed
       mood_happy
     ].freeze
+    EMOMUSIC_RANGE = (1.0..9.0).freeze
 
     # Inputs are expected to have passed mood_probe's loud registry range validation upstream;
     # clamping here is normalization, not malformed-output validation.

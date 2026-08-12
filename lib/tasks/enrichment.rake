@@ -18,7 +18,7 @@ namespace :enrichment do
     feature_extractor = MoodProbe::Extractor.new(
       models_dir: ENV.fetch("ESSENTIA_MODELS_DIR", Rails.root.join("tmp", "essentia_models"))
     )
-    feature_extractor.verify!
+    feature_extractor.verify!(descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
 
     albums = Album.all.to_a
     albums.each(&:reset_enrichment!)
@@ -41,7 +41,7 @@ def run_enrichment(
       "so the run-level consecutive llm_only guard is the backstop"
     )
   end
-  feature_extractor.verify!
+  feature_extractor.verify!(descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
 
   albums.each do |album|
     begin
