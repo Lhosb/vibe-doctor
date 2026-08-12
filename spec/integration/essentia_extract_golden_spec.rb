@@ -23,6 +23,8 @@ RSpec.describe "Essentia extraction goldens", :essentia do
   DECODABLE_FIXTURES = %w[chirp clicks sine_440 white_noise].freeze
   # Relative-bound heads are 10x tighter than Phase 4's 1e-3 ONNX gate; the floor-bound head is ~1.5x tighter.
   # Calibration control: a 0.900e-04 chirp.valence perturbation passed, while 1.100e-04 failed.
+  # This tolerance is load-bearing because emulation generated the goldens while native x86_64 CI extracts them;
+  # tightening it toward exact equality would break this intentional cross-environment configuration.
   GOLDEN_REL_TOL = 1e-4
   GOLDEN_ABS_FLOOR = 1e-10
   CPU_IDENTIFIER = (
