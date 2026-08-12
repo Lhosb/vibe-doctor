@@ -105,11 +105,13 @@ RSpec.describe MoodGroundingService do
     allow(feature_extractor).to receive(:analyze)
       .and_raise(MoodProbe::MalformedOutputError, "valence_emomusic is outside sanity range -3.0..13.0")
     allow(youtube_matcher).to receive(:find_clips).and_return([])
-    allow(Rails.logger).to receive(:warn)
+    allow(Rails.logger).to receive(:error)
 
     expect(service.ground(album)[:mood_source]).to eq("llm_only")
-    expect(Rails.logger).to have_received(:warn)
-      .with(/iTunes-sourced track analysis failed.*valence_emomusic is outside sanity range/)
+    expect(Rails.logger).to have_received(:error)
+      .with(
+        /album_id=#{album.id}.*source=iTunes.*error=MoodProbe::MalformedOutputError.*attempted=1 contributing=0/
+      )
   end
 
   it "tries YouTube after multiple iTunes tracks fail uniformly" do
@@ -214,17 +216,29 @@ RSpec.describe MoodGroundingService do
     expect(service.ground(album)[:mood_source]).to eq("llm_only")
   end
 
-  it "grounds from the survivors when some but not all tracks fail analysis" do
+  it "aggregates surviving tracks and logs omission counts when malformed output skips a track" do
     allow(itunes_matcher).to receive(:find_previews).and_return(
       [ itunes_match("https://example.com/preview.m4a", 0.9), itunes_match("https://example.com/preview.m4a", 0.9) ]
     )
     call_count = 0
     allow(feature_extractor).to receive(:analyze) do
       call_count += 1
-      call_count == 1 ? raise(MoodProbe::InferenceError, "boom") : analysis
+      call_count == 1 ? raise(MoodProbe::MalformedOutputError, "bad valence") : analysis(valence_emomusic: 7.4)
     end
+    allow(Rails.logger).to receive(:error)
+    allow(Rails.logger).to receive(:info)
 
-    expect(service.ground(album)[:mood_source]).to eq("essentia_itunes")
+    result = service.ground(album)
+
+    expect(result[:mood_source]).to eq("essentia_itunes")
+    expect(result[:valence]).to eq(0.8)
+    expect(result[:spread][:valence]).to eq(0.0)
+    expect(Rails.logger).to have_received(:error)
+      .with(
+        /album_id=#{album.id}.*source=iTunes.*error=MoodProbe::MalformedOutputError.*attempted=2 contributing=1/
+      )
+    expect(Rails.logger).to have_received(:info)
+      .with(/album_id=#{album.id}.*source=iTunes.*attempted=2 contributing=1/)
   end
 
   it "does not escalate when all matched tracks fail with different error classes" do

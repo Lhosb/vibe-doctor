@@ -38,7 +38,7 @@ residuals folded in. Nothing else in this document changed.
 | **2** | **The sample rate is no longer unknown.** Essentia's reference page states `RhythmExtractor2013` requires **44100 Hz** outright; I re-fetched and confirmed it verbatim. The `loads` gate is **pinned now at two entries**, Risk 1 downgrades from an unknown to a cost question, and the measurement reframes to "does resampling change the answer?". | §E.7, §L Risk 1, §M.2 |
 | **3** | **Misattribution corrected.** §A.2 credited the clamp mechanization to §E.2's *identity* spec. It is the **boundary** spec that does the work — E.1's own precondition records the clamp was inert on all eight goldens, so the identity spec cannot exercise it. | §A.2 |
 | **4** | **Streaming-downloader rewrite moved out of Phase A.** It is the one piece of Phase A's growth that is genuinely new work and that nothing else waits on. `byte_length` (and `license`/`attribution`/`pack`) stay in Phase A. | §C.3, §J.2, §K |
-| **5** | **Phase A's app work lands as ≥2 commits.** Three of the fifteen items are guardrails that must survive a rollback. Rollback reverts the *behaviour* commit only. | §J.3, §J.5 |
+| **5** | **Phase A's app work lands as ≥2 commits.** Three of the sixteen items are guardrails that must survive a rollback. Rollback reverts the *behaviour* commit only. | §J.3, §J.5 |
 | **6** | **Three test-side residuals closed:** R1 freeze the baseline in **both** repos and name which owns the invariance claim; R2 put the 44.1 kHz fixture in the **gem**, where its gate runs; R3 give the baseline a **retirement procedure**. | §E.1, §E.7, §J.2 |
 | **7** | **Both dispute outcomes recorded**, including the condition attached to dispute 2 and the Phase C offer that lets `voice_instrumental` earn a real gate. | §M.1, §J.6 |
 | **8** | **Readiness statement** and a **standalone Phase A definition of done** that does not require holding this document in context. | §M.3, §J.4 |
@@ -1039,7 +1039,8 @@ the Round-4 commit split in the first column:
 | 5 | **B** | `config/initializers/` | **new** — boot-time range-agreement check (M3(2)) |
 | 6 | **B** | `Gemfile:34` + `Gemfile.lock` | `branch: "main"` → `tag: "v0.2.0"` |
 | 7 | **I** | `.github/dependabot.yml` | **add `ignore` for `mood_probe`** (M7) |
-| 8 | **I** | `.github/workflows/ci.yml:117-123` | example-count arithmetic + spec selection (SF-1); app-side mirror of the empty-dir proof (F.2) |
+| 8a | **I** | `.github/workflows/ci.yml` | example-count arithmetic + spec selection (SF-1) — a guardrail against a botched rollback, must survive one |
+| 8b | **B** | `spec/integration/essentia_empty_models_spec.rb` | **new** — app-side mirror of the empty-dir proof (§F.2). Calls `analyze(path, descriptors:)`, so it is **v0.2.0-coupled** and must revert with the behaviour commit |
 | 9 | **B** | `spec/services/mood_grounding_service_spec.rb:19`, `:193` | builds real `MoodProbe::Features` — replace with an `Analysis` builder |
 | 10 | **B** | `spec/support/phase3_parity.rb` | **delete** — compares against a script deleted at `96e546f`; E.1's baseline supersedes it (SF-8) |
 | 11 | **B** | `spec/fixtures/mood_probe/generate_goldens.rb:10`, `:15` | `analyze` arity + new payload shape; regeneration must run on detector-confirmed native x86_64, never Docker Desktop emulation |
@@ -1047,13 +1048,18 @@ the Round-4 commit split in the first column:
 | 13 | **B** | `spec/jobs/enrich_album_job_spec.rb:99-114` | zero-arg `verify!` → `verify!(descriptors:)` (M1, N1) |
 | 14 | **I** | `spec/fixtures/mood_probe/baseline_v0_1_0/*.json` | **new** — frozen baseline (MF-1), with the retirement comment from §E.1 |
 | 15 | **B** | new specs | mapper identity (E.2), mapper clamp **boundaries** (E.2 — the one that actually enforces the clamp) |
+| 16 | **B** | `spec/fixtures/mood_probe/golden/PROVENANCE.md` | **new** — records the live-extraction source closure, generating commit, and execution environment for the regenerated app goldens |
 
-**I = infrastructure commit, B = behaviour commit.** Items 7, 8 and 14 are guardrails and evidence,
-orthogonal to the behaviour change, and **must survive a rollback**. Landing all fifteen as one commit
+**I = infrastructure commit, B = behaviour commit.** Items 7, 8a and 14 are guardrails and evidence,
+orthogonal to the behaviour change, and **must survive a rollback**. Landing all sixteen as one commit
 means a blanket revert removes the Dependabot `ignore` — the specific guard against the gem being
 re-shipped accidentally — at exactly the moment a botched deploy has just been rolled back and the gem
 tag is the thing you least want a bot advancing. Land **I first**, then **B**. Note item 15 no longer
 carries the 44.1 kHz fixture: per R2 it belongs in the gem, where its gate runs (§J.2).
+
+An item's I/B classification is determined by **which gem version its code requires**, not by what kind
+of artifact it is. A guardrail that calls a v0.2.0-only API is **B by dependency**, whatever its
+purpose. Anything left in place by J.5 step 1 must load against `v0.1.0`.
 
 **Verified correction to my own §9 (S10): none of the four `Extractor.new` construction sites need to
 change**, because `registry:` has a default of `Registry.default` (§2.1). What changes is two `analyze`
@@ -1074,8 +1080,13 @@ becomes a descriptor registry with typed results and an extraction planner. vibe
 **the same six numbers it produces today**, now by asking for six named descriptors and mapping them
 itself. No database migration. No new persisted field. Gem `v0.2.0` and the app change deploy together.
 
-**Behaviour that must not change:** the six values written to `mood_vectors` for a given audio file,
-all within `max(1e-4·|expected|, 1e-10)` of the frozen baseline.
+**Phase A is behaviour-preserving for every input whose descriptors fall inside `sanity_range` — which
+is every input observed to date; G1 shows the six numbers byte-identical across all four fixtures. For
+input outside `sanity_range` the *disposition* changed deliberately: 0.1.0 clamped the value and stored
+it, 0.2.0 raises `MalformedOutputError` and the track is omitted from the album aggregate. That change
+is intended — M3(b) named silent saturation as the hazard `sanity_range` exists to close — but it is a
+behaviour change, not a preservation, and its consequence for the persisted album vector is recorded in
+§J.5.**
 
 #### Structure
 
@@ -1106,7 +1117,7 @@ all within `max(1e-4·|expected|, 1e-10)` of the frozen baseline.
 - [ ] **A9** vibe-doctor gains `MoodVectors::EssentiaMapper` doing `(v − 1.0) / 8.0` **and
       `.clamp(0.0, 1.0)`**, plus a boot initializer asserting the gem's declared emomusic range still
       equals the mapper's.
-- [ ] **A10** All 15 app files in §J.3 updated, landed as **infrastructure commit then behaviour
+- [ ] **A10** All 16 app files in §J.3 updated, landed as **infrastructure commit then behaviour
       commit**; `Gemfile` pinned to `tag: "v0.2.0"`; Dependabot `ignore` added for `mood_probe`.
 
 #### Evidence — every gate below must have a state in which it fails
@@ -1167,14 +1178,29 @@ model files**, so they run in the gem's `essentia_offline` job with no network f
 
 ### J.5 Rollback procedure
 
-1. Revert the **behaviour** commit in vibe-doctor (§J.3 items 1–6, 9–13, 15). Leave the
-   **infrastructure** commit (items 7, 8, 14) in place — reverting it would remove the Dependabot
+1. Revert the **behaviour** commit in vibe-doctor (§J.3 items 1–6, 8b, 9–13, 15–16). Leave the
+   **infrastructure** commit (items 7, 8a, 14) in place — reverting it would remove the Dependabot
    `ignore`, the CI fix, and the frozen baseline, all of which are guardrails against exactly the
    situation a rollback implies.
 2. `Gemfile` returns to `tag: "v0.1.0"`; `bundle install`; commit the lockfile.
-3. **Nothing else.** `mood_vectors` was never migrated and the persisted numbers are identical to
-   within `1e-4`, so albums enriched under 0.2.0 are indistinguishable from albums enriched under
-   0.1.0. There is no data to reconcile and no backfill to run.
+3. **No schema change, and no backfill for well-formed input.** `mood_vectors` was never migrated, and
+   for every track whose descriptors fall inside `sanity_range` the persisted numbers are identical to
+   within `1e-4` — those albums are indistinguishable between 0.1.0 and 0.2.0 and need no reconciliation.
+
+   **One case is not identical.** A track whose emomusic falls outside `sanity_range`
+   (`-3.0..13.0`, `registry.rb:255`) was **clamped and stored** under 0.1.0 and is **skipped** under
+   0.2.0 — `MalformedOutputError < TrackError` (`errors.rb:6`), rescued at
+   `mood_grounding_service.rb:95` and `:110`, omitted by `filter_map` at `:56` and `:77`. The album's
+   stored vector is then the mean of the surviving tracks, and with a single survivor every `spread` is
+   `0.0` (`:148`) — indistinguishable **in the row** from a clean single-track album. Note that
+   `systematic_track_failure` does not cover this: it requires `track_coords.empty?` (`:123`), so it is
+   inert whenever any track survives. The row carries no trace; the enrichment run log does.
+
+   **On rollback, therefore:** search the 0.2.0-era enrichment logs for `MalformedOutputError`. Every
+   album named there has a stored vector computed from fewer tracks than 0.1.0 would have used and must
+   be re-enriched after the `Gemfile` returns to `v0.1.0`. If those logs are unavailable, re-enrich the
+   albums enriched during the 0.2.0 window. Durable attempted/contributing counts, and a guard that
+   covers partial failure, are Phase B items.
 
 **Two commits, not two lines** — the difference is whether someone budgets an hour or a day for the
 rehearsal.
@@ -1366,7 +1392,7 @@ or is scheduled with a named home. §J.4 is a standalone definition of done — 
 
 Three things a reader should carry into implementation rather than discover:
 
-1. **Phase A is large.** ~14 gem items, 15 app files across two commits, 21 gates. It is the largest
+1. **Phase A is large.** ~14 gem items, 16 app files across two commits, 21 gates. It is the largest
    slice in the plan and it will not land in a day. It is still the right slice, because its
    alternative is not "a smaller Phase A" but "the same work discovered during Phase B, in
    production" — which M1 demonstrates concretely. Scale expectations, not scope.

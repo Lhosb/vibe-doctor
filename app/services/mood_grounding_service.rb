@@ -54,10 +54,18 @@ class MoodGroundingService
 
     track_errors = []
     track_coords = previews.filter_map { |preview| analyze_remote_track(preview.preview_url, track_errors:) }
+    log_track_omissions(
+      album:, source: "iTunes", track_errors:,
+      attempted_count: previews.size, contributing_count: track_coords.size
+    )
     failure = systematic_track_failure(track_coords, track_errors, previews.size, source: "iTunes")
     return [ nil, failure ] if track_coords.empty?
 
-    [ aggregate(track_coords).merge(mood_source: "essentia_itunes", match_confidence: previews.first.match_confidence), nil ]
+    [
+      aggregate(track_coords, album:, source: "iTunes", attempted_count: previews.size)
+        .merge(mood_source: "essentia_itunes", match_confidence: previews.first.match_confidence),
+      nil
+    ]
   end
 
   def ground_via_youtube(album, on_matched)
@@ -75,10 +83,18 @@ class MoodGroundingService
     begin
       track_errors = []
       track_coords = paths.filter_map { |clip_path| analyze_local_track(clip_path, track_errors:) }
+      log_track_omissions(
+        album:, source: "YouTube", track_errors:,
+        attempted_count: paths.size, contributing_count: track_coords.size
+      )
       failure = systematic_track_failure(track_coords, track_errors, paths.size, source: "YouTube")
       return [ nil, failure ] if track_coords.empty?
 
-      [ aggregate(track_coords).merge(mood_source: "essentia_youtube", match_confidence: 1.0), nil ]
+      [
+        aggregate(track_coords, album:, source: "YouTube", attempted_count: paths.size)
+          .merge(mood_source: "essentia_youtube", match_confidence: 1.0),
+        nil
+      ]
     ensure
       paths.each { |path| File.delete(path) if File.exist?(path) }
     end
@@ -94,11 +110,9 @@ class MoodGroundingService
     MoodVectors::EssentiaMapper.new.call(analysis.to_h.transform_values(&:value))
   rescue MoodProbe::TrackError => e
     track_errors << e
-    Rails.logger.warn("iTunes-sourced track analysis failed for '#{preview_url}': #{e.message}")
     nil
   rescue Faraday::Error => e
     track_errors << e
-    Rails.logger.warn("iTunes-sourced track analysis failed for '#{preview_url}': #{e.message}")
     nil
   ensure
     File.delete(dest_path) if File.exist?(dest_path)
@@ -109,7 +123,6 @@ class MoodGroundingService
     MoodVectors::EssentiaMapper.new.call(analysis.to_h.transform_values(&:value))
   rescue MoodProbe::TrackError => e
     track_errors << e
-    Rails.logger.warn("YouTube-sourced track analysis failed for '#{clip_path}': #{e.message}")
     nil
   ensure
     File.delete(clip_path) if File.exist?(clip_path)
@@ -139,7 +152,21 @@ class MoodGroundingService
     raise SystematicTrackFailure, "#{itunes_failure}; #{youtube_failure}"
   end
 
-  def aggregate(track_coords)
+  def log_track_omissions(album:, source:, track_errors:, attempted_count:, contributing_count:)
+    track_errors.each do |error|
+      Rails.logger.error(
+        "Mood grounding omitted track: album_id=#{album.id} album_title=#{album.title.inspect} " \
+        "source=#{source} error=#{error.class} attempted=#{attempted_count} contributing=#{contributing_count} " \
+        "message=#{error.message.inspect}"
+      )
+    end
+  end
+
+  def aggregate(track_coords, album:, source:, attempted_count:)
+    Rails.logger.info(
+      "Mood grounding aggregate: album_id=#{album.id} album_title=#{album.title.inspect} " \
+      "source=#{source} attempted=#{attempted_count} contributing=#{track_coords.size}"
+    )
     means = {}
     spreads = {}
     MoodVector::MOOD_HEADS.each do |head|
