@@ -1,24 +1,25 @@
 require "json"
-require "mood_probe"
+require "sonance"
 require "pathname"
 require "spec_helper"
 
 # Run in the Docker image, where essentia-tensorflow is installed:
 #   docker build --platform linux/amd64 -t vibe-doctor-essentia-goldens .
 #   docker run --rm --platform linux/amd64 --entrypoint bash \
-#     -v "$PWD/spec/fixtures/mood_probe/golden:/rails/spec/fixtures/mood_probe/golden" \
+#     -v "$PWD/spec/fixtures/sonance/golden:/rails/spec/fixtures/sonance/golden" \
 #     vibe-doctor-essentia-goldens \
-#     -c "ruby spec/fixtures/mood_probe/generate_goldens.rb"
+#     -c "ruby spec/fixtures/sonance/generate_goldens.rb"
 #   docker run --rm --platform linux/amd64 --entrypoint bash \
 #     -e ESSENTIA_SPECS=1 -e RAILS_ENV=test vibe-doctor-essentia-goldens \
 #     -c "bundle exec rspec spec/integration/essentia_extract_golden_spec.rb --format documentation"
 RSpec.describe "Essentia extraction goldens", :essentia do
   ROOT = Pathname(__dir__).join("../..").expand_path
-  AUDIO_DIR = ROOT.join("spec/fixtures/mood_probe/audio")
-  GOLDEN_DIR = ROOT.join("spec/fixtures/mood_probe/golden")
+  AUDIO_DIR = ROOT.join("spec/fixtures/sonance/audio")
+  GOLDEN_DIR = ROOT.join("spec/fixtures/sonance/golden")
   MODELS_DIR = ROOT.join("tmp/essentia_models")
   DESCRIPTORS = %i[
-    valence_emomusic arousal_emomusic danceability mood_acoustic mood_relaxed mood_happy
+    valence_emomusic arousal_emomusic danceability_musicnn mood_acoustic_musicnn
+    mood_relaxed_musicnn mood_happy_musicnn
   ].freeze
   DECODABLE_FIXTURES = %w[chirp clicks sine_440 white_noise].freeze
   # Relative-bound heads are 10x tighter than Phase 4's 1e-3 ONNX gate; the floor-bound head is ~1.5x tighter.
@@ -31,7 +32,7 @@ RSpec.describe "Essentia extraction goldens", :essentia do
     File.exist?("/proc/cpuinfo") && File.read("/proc/cpuinfo")[/^model name\s*:\s*(.+)$/, 1] || "unknown CPU"
   ).freeze
 
-  let(:extractor) { MoodProbe::Extractor.new(models_dir: MODELS_DIR) }
+  let(:extractor) { Sonance::Extractor.new(models_dir: MODELS_DIR) }
 
   DECODABLE_FIXTURES.each do |fixture_name|
     it "matches the #{fixture_name} golden output" do
@@ -84,6 +85,6 @@ RSpec.describe "Essentia extraction goldens", :essentia do
 
     expect {
       extractor.analyze(audio_path, descriptors: DESCRIPTORS)
-    }.to raise_error(MoodProbe::UnreadableAudioError)
+    }.to raise_error(Sonance::UnreadableAudioError)
   end
 end

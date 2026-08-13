@@ -1,14 +1,17 @@
 require "json"
-require "mood_probe"
+require "sonance"
 require "pathname"
 require "rbconfig"
 
 root = Pathname(__dir__).join("../../..").expand_path
-audio_dir = root.join("spec/fixtures/mood_probe/audio")
-golden_dir = root.join("spec/fixtures/mood_probe/golden")
+audio_dir = root.join("spec/fixtures/sonance/audio")
+golden_dir = root.join("spec/fixtures/sonance/golden")
 models_dir = root.join("tmp/essentia_models")
-descriptors = %i[valence_emomusic arousal_emomusic danceability mood_acoustic mood_relaxed mood_happy]
-extractor = MoodProbe::Extractor.new(models_dir:)
+descriptors = %i[
+  valence_emomusic arousal_emomusic danceability_musicnn mood_acoustic_musicnn
+  mood_relaxed_musicnn mood_happy_musicnn
+]
+extractor = Sonance::Extractor.new(models_dir:)
 host_cpu = RbConfig::CONFIG.fetch("host_cpu")
 abort("goldens require an amd64 runtime, got #{host_cpu}") unless %w[x86_64 amd64].include?(host_cpu)
 

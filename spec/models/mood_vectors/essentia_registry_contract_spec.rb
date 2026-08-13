@@ -1,7 +1,7 @@
 require "rails_helper"
 
-RSpec.describe "mood_probe registry contract" do
-  let(:registry) { MoodProbe::Registry.default }
+RSpec.describe "sonance registry contract" do
+  let(:registry) { Sonance::Registry.default }
 
   it "contains every descriptor consumed by the mapper" do
     expect(MoodVectors::EssentiaMapper::DESCRIPTORS.size).to eq(6)

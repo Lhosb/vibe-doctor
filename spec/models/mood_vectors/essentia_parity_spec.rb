@@ -8,13 +8,13 @@ RSpec.describe "Essentia mood vector parity" do
   DESCRIPTOR_TO_HEAD = {
     valence_emomusic: :valence,
     arousal_emomusic: :arousal,
-    danceability: :danceability,
-    mood_acoustic: :mood_acoustic,
-    mood_relaxed: :mood_relaxed,
-    mood_happy: :mood_happy
+    danceability_musicnn: :danceability,
+    mood_acoustic_musicnn: :mood_acoustic,
+    mood_relaxed_musicnn: :mood_relaxed,
+    mood_happy_musicnn: :mood_happy
   }.freeze
-  GOLDEN_ROOT = Rails.root.join("spec/fixtures/mood_probe/golden")
-  BASELINE_ROOT = Rails.root.join("spec/fixtures/mood_probe/baseline_v0_1_0")
+  GOLDEN_ROOT = Rails.root.join("spec/fixtures/sonance/golden")
+  BASELINE_ROOT = Rails.root.join("spec/fixtures/sonance/baseline_v0_1_0")
   RELATIVE_TOLERANCE = 1e-4
   ABSOLUTE_FLOOR = 1e-10
   # Calibration control: a literal 0.900e-04 chirp.mood_happy perturbation passes, while 1.100e-04 fails.
@@ -80,7 +80,7 @@ RSpec.describe "Essentia mood vector parity" do
   it "rejects a calibration perturbation just outside the parity bound with an attributable failure" do
     with_perturbed_baseline(relative_delta: 1.1e-4) do |baseline_root|
       expect { assert_parity(baseline_root:) }
-        .to raise_error(RSpec::Expectations::ExpectationNotMetError, /chirp\.json golden mood_happy/)
+        .to raise_error(RSpec::Expectations::ExpectationNotMetError, /chirp\.json golden mood_happy_musicnn/)
     end
   end
 
@@ -88,7 +88,7 @@ RSpec.describe "Essentia mood vector parity" do
     it "maps the #{fixture} golden to the frozen mood vector" do
       golden = JSON.parse(GOLDEN_ROOT.join("#{fixture}.json").read, symbolize_names: true)
       baseline = JSON.parse(BASELINE_ROOT.join("#{fixture}.json").read, symbolize_names: true)
-      analysis = MoodProbe::AnalysisBuilder.new(registry: MoodProbe::Registry.default).call(
+      analysis = Sonance::AnalysisBuilder.new(registry: Sonance::Registry.default).call(
         requested: MoodVectors::EssentiaMapper::DESCRIPTORS,
         raw_values: golden
       )

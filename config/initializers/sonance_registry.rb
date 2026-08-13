@@ -1,8 +1,8 @@
 Rails.application.config.after_initialize do
-  registry = MoodProbe::Registry.default
+  registry = Sonance::Registry.default
   missing_descriptors = MoodVectors::EssentiaMapper::DESCRIPTORS - registry.ids
   if missing_descriptors.any?
-    raise "mood_probe registry is missing mapped descriptors: #{missing_descriptors.join(", ")}"
+    raise "sonance registry is missing mapped descriptors: #{missing_descriptors.join(", ")}"
   end
 
   %i[valence_emomusic arousal_emomusic].each do |descriptor_id|

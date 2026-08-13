@@ -2,7 +2,7 @@ class EnrichAlbumJob < ApplicationJob
   queue_as :default
 
   def perform(album, mood_grounder: nil, feature_extractor: nil, vibe_card_generator: nil, embedding_service: nil)
-    feature_extractor ||= MoodProbe::Extractor.new(
+    feature_extractor ||= Sonance::Extractor.new(
       models_dir: ENV.fetch("ESSENTIA_MODELS_DIR", Rails.root.join("tmp", "essentia_models"))
     )
     feature_extractor.verify!(descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)

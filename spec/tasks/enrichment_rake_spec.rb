@@ -4,10 +4,10 @@ require "rake"
 RSpec.describe "enrichment:backfill rake task" do
   before(:all) { Rails.application.load_tasks unless Rake::Task.task_defined?("enrichment:backfill") }
   after { Rake::Task["enrichment:backfill"].reenable }
-  let(:feature_extractor) { instance_double(MoodProbe::Extractor, verify!: true) }
+  let(:feature_extractor) { instance_double(Sonance::Extractor, verify!: true) }
 
   before do
-    allow(MoodProbe::Extractor).to receive(:new).and_return(feature_extractor)
+    allow(Sonance::Extractor).to receive(:new).and_return(feature_extractor)
   end
 
   def mood_attrs(source:)
@@ -119,23 +119,23 @@ RSpec.describe "enrichment:backfill rake task" do
     album = Album.create!(master_id: 1, title: "Blocked")
     allow(feature_extractor).to receive(:verify!)
       .with(descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
-      .and_raise(MoodProbe::ConfigurationError, "bad models")
+      .and_raise(Sonance::ConfigurationError, "bad models")
     expect(EnrichAlbumJob).not_to receive(:perform_now)
     expect(Faraday).not_to receive(:get)
 
     expect { run_enrichment([ album ], feature_extractor:) }
-      .to raise_error(MoodProbe::ConfigurationError, "bad models")
+      .to raise_error(Sonance::ConfigurationError, "bad models")
   end
 
   it "re-raises fatal extractor errors and stops processing later albums" do
     broken = Album.create!(master_id: 1, title: "Broken")
     untouched = Album.create!(master_id: 2, title: "Untouched")
     allow(EnrichAlbumJob).to receive(:perform_now).with(broken, feature_extractor:)
-                                                   .and_raise(MoodProbe::BackendError, "protocol broke")
+                                                   .and_raise(Sonance::BackendError, "protocol broke")
 
     expect { run_enrichment([ broken, untouched ], feature_extractor:) }
       .to output(/2 albums processed: 0 succeeded, 1 failed/).to_stdout
-      .and raise_error(MoodProbe::BackendError, "protocol broke")
+      .and raise_error(Sonance::BackendError, "protocol broke")
     expect(EnrichAlbumJob).not_to have_received(:perform_now).with(untouched, feature_extractor:)
   end
 
@@ -145,7 +145,7 @@ RSpec.describe "enrichment:backfill rake task" do
     expect(youtube_matcher).not_to receive(:find_clips)
 
     expect { run_enrichment(albums, feature_extractor:) }
-      .to raise_error(MoodProbe::FatalError, /5 consecutive albums produced llm_only/)
+      .to raise_error(Sonance::FatalError, /5 consecutive albums produced llm_only/)
   end
 
   it "continues after per-album download and YouTube content failures" do
@@ -153,7 +153,7 @@ RSpec.describe "enrichment:backfill rake task" do
     stub_real_fallback_dependencies(
       youtube_enabled: true,
       youtube_clips: [ "/tmp/one.m4a", "/tmp/two.m4a" ],
-      youtube_error: MoodProbe::UnreadableAudioError.new("corrupt")
+      youtube_error: Sonance::UnreadableAudioError.new("corrupt")
     )
 
     expect { run_enrichment(albums, feature_extractor:) }.not_to raise_error
@@ -191,10 +191,10 @@ end
 RSpec.describe "enrichment:reground_all rake task" do
   before(:all) { Rails.application.load_tasks unless Rake::Task.task_defined?("enrichment:reground_all") }
   after { Rake::Task["enrichment:reground_all"].reenable }
-  let(:feature_extractor) { instance_double(MoodProbe::Extractor, verify!: true) }
+  let(:feature_extractor) { instance_double(Sonance::Extractor, verify!: true) }
 
   before do
-    allow(MoodProbe::Extractor).to receive(:new).and_return(feature_extractor)
+    allow(Sonance::Extractor).to receive(:new).and_return(feature_extractor)
   end
 
   it "resets every album to pending and re-enriches all of them, including already-grounded ones" do
@@ -214,10 +214,10 @@ RSpec.describe "enrichment:reground_all rake task" do
     grounded = Album.create!(master_id: 1, title: "Grounded").tap(&:start_matching!).tap(&:start_extracting!).tap(&:ground!)
     allow(feature_extractor).to receive(:verify!)
       .with(descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
-      .and_raise(MoodProbe::ConfigurationError, "bad models")
+      .and_raise(Sonance::ConfigurationError, "bad models")
 
     expect { Rake::Task["enrichment:reground_all"].invoke }
-      .to raise_error(MoodProbe::ConfigurationError, "bad models")
+      .to raise_error(Sonance::ConfigurationError, "bad models")
     expect(grounded.reload).to be_grounded
   end
 end

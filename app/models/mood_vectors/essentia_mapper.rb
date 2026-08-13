@@ -1,19 +1,19 @@
 module MoodVectors
   class EssentiaMapper
-    # Source citation, not a machine check: mood_probe registry.rb default_descriptors at v0.2.0,
-    # peeled SHA 848f6894a6022b5a32ae2b6b0c6898ac84986fa0. Slice 5b adds the construction assertion
-    # that this set is a subset of MoodProbe::Registry.default.ids after the gem is pinned.
+    # Source citation, not a machine check: sonance registry.rb default_descriptors at v0.3.0,
+    # peeled SHA 66393972a8b57ee116afec0fbeb879a0c410dbca. Slice 5b adds the construction assertion
+    # that this set is a subset of Sonance::Registry.default.ids after the gem is pinned.
     DESCRIPTORS = %i[
       valence_emomusic
       arousal_emomusic
-      danceability
-      mood_acoustic
-      mood_relaxed
-      mood_happy
+      danceability_musicnn
+      mood_acoustic_musicnn
+      mood_relaxed_musicnn
+      mood_happy_musicnn
     ].freeze
     EMOMUSIC_RANGE = (1.0..9.0).freeze
 
-    # Inputs are expected to have passed mood_probe's loud registry range validation upstream;
+    # Inputs are expected to have passed sonance's loud registry range validation upstream;
     # clamping here is normalization, not malformed-output validation.
     def call(descriptors)
       validate_descriptors!(descriptors)
@@ -21,10 +21,10 @@ module MoodVectors
       {
         valence: rescale_emomusic(descriptors.fetch(:valence_emomusic)),
         arousal: rescale_emomusic(descriptors.fetch(:arousal_emomusic)),
-        danceability: clamp(descriptors.fetch(:danceability)),
-        mood_acoustic: clamp(descriptors.fetch(:mood_acoustic)),
-        mood_relaxed: clamp(descriptors.fetch(:mood_relaxed)),
-        mood_happy: clamp(descriptors.fetch(:mood_happy))
+        danceability: clamp(descriptors.fetch(:danceability_musicnn)),
+        mood_acoustic: clamp(descriptors.fetch(:mood_acoustic_musicnn)),
+        mood_relaxed: clamp(descriptors.fetch(:mood_relaxed_musicnn)),
+        mood_happy: clamp(descriptors.fetch(:mood_happy_musicnn))
       }
     end
 

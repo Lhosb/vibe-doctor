@@ -42,7 +42,7 @@ for path in "${spec_files[@]}"; do
   fi
 done
 
-fixtures=$(find spec/fixtures/mood_probe/golden -maxdepth 1 -type f -name "*.json" | wc -l)
+fixtures=$(find spec/fixtures/sonance/golden -maxdepth 1 -type f -name "*.json" | wc -l)
 floor=$((fixtures + 1))
 dry_run=$(bundle exec rspec "${spec_files[@]}" --tag essentia --dry-run --format json)
 expected=$(printf "%s" "$dry_run" | ruby -rjson -e '
@@ -51,7 +51,7 @@ expected=$(printf "%s" "$dry_run" | ruby -rjson -e '
   abort "Essentia dry run contained failures" unless summary.fetch("failure_count").zero?
   abort "Essentia dry run contained load errors" unless summary.fetch("errors_outside_of_examples_count").zero?
   descriptions = data.fetch("examples").map { |example| example.fetch("full_description") }
-  fixtures = Dir["spec/fixtures/mood_probe/golden/*.json"].map { |path| File.basename(path, ".json") }
+  fixtures = Dir["spec/fixtures/sonance/golden/*.json"].map { |path| File.basename(path, ".json") }
   missing = fixtures.reject do |fixture|
     pattern = /\b#{Regexp.escape(fixture)}\b/
     descriptions.any? { |description| description.match?(pattern) }

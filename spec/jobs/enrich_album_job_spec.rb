@@ -4,7 +4,7 @@ require "tmpdir"
 RSpec.describe EnrichAlbumJob, type: :job do
   let(:album) { Album.create!(master_id: 1, title: "Kind of Blue", artists: [ "Miles Davis" ], year: 1959, genres: [ "Jazz" ]) }
   let(:mood_grounder) { instance_double(MoodGroundingService) }
-  let(:feature_extractor) { instance_double(MoodProbe::Extractor, verify!: true) }
+  let(:feature_extractor) { instance_double(Sonance::Extractor, verify!: true) }
   let(:vibe_card_generator) { instance_double(VibeCardGenerator) }
   let(:embedding_service) { instance_double(AlbumEmbeddingService) }
   let(:mood_attrs) do
@@ -99,11 +99,11 @@ RSpec.describe EnrichAlbumJob, type: :job do
   it "preflights before matching audio and makes zero HTTP calls on configuration failure" do
     Dir.mktmpdir do |models_dir|
       backend = instance_double(
-        MoodProbe::Backends::EssentiaPython,
+        Sonance::Backends::EssentiaPython,
         preflight_environment!: true,
         preflight_plan!: true
       )
-      empty_extractor = MoodProbe::Extractor.new(models_dir:, backend:)
+      empty_extractor = Sonance::Extractor.new(models_dir:, backend:)
       expect(mood_grounder).not_to receive(:ground)
       expect(Faraday).not_to receive(:get)
 
@@ -112,7 +112,7 @@ RSpec.describe EnrichAlbumJob, type: :job do
           album, mood_grounder:, feature_extractor: empty_extractor,
           vibe_card_generator:, embedding_service:
         )
-      }.to raise_error(MoodProbe::ConfigurationError, /missing model/)
+      }.to raise_error(Sonance::ConfigurationError, /missing model/)
     end
 
     expect(album.reload).to be_failed

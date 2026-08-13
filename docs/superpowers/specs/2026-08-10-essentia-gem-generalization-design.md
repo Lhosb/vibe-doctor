@@ -1182,7 +1182,11 @@ model files**, so they run in the gem's `essentia_offline` job with no network f
    **infrastructure** commit (items 7, 8a, 14) in place — reverting it would remove the Dependabot
    `ignore`, the CI fix, and the frozen baseline, all of which are guardrails against exactly the
    situation a rollback implies.
-2. `Gemfile` returns to `tag: "v0.1.0"`; `bundle install`; commit the lockfile.
+2. `Gemfile` returns to `tag: "v0.1.0"` at the current repository URL
+   (`git@github.com:Lhosb/sonance.git`), never the pre-rename URL that a blanket revert would restore;
+   `bundle install`; commit the lockfile. Gem `v0.1.0` and `v0.2.0` still expose the `MoodProbe`
+   namespace, so rolling back to either also requires reverting commit E's call-site changes. Do not
+   revert the `Gemfile` alone.
 3. **No schema change, and no backfill for well-formed input.** `mood_vectors` was never migrated, and
    for every track whose descriptors fall inside `sanity_range` the persisted numbers are identical to
    within `1e-4` — those albums are indistinguishable between 0.1.0 and 0.2.0 and need no reconciliation.

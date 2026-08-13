@@ -4,15 +4,15 @@ RSpec.describe MoodGroundingService do
   let(:album) { Album.create!(master_id: 1, title: "Kind of Blue", artists: [ "Miles Davis" ]) }
   let(:itunes_matcher) { instance_double(ItunesPreviewMatcher) }
   let(:youtube_matcher) { instance_double(YoutubeClipMatcher) }
-  let(:feature_extractor) { instance_double(MoodProbe::Extractor) }
+  let(:feature_extractor) { instance_double(Sonance::Extractor) }
   let(:raw_track) do
     {
       valence_emomusic: 5.0,
       arousal_emomusic: 5.0,
-      danceability: 0.5,
-      mood_acoustic: 0.5,
-      mood_relaxed: 0.5,
-      mood_happy: 0.5
+      danceability_musicnn: 0.5,
+      mood_acoustic_musicnn: 0.5,
+      mood_relaxed_musicnn: 0.5,
+      mood_happy_musicnn: 0.5
     }
   end
 
@@ -25,7 +25,7 @@ RSpec.describe MoodGroundingService do
   end
 
   def analysis(overrides = {})
-    MoodProbe::AnalysisBuilder.new(registry: MoodProbe::Registry.default).call(
+    Sonance::AnalysisBuilder.new(registry: Sonance::Registry.default).call(
       requested: MoodVectors::EssentiaMapper::DESCRIPTORS,
       raw_values: raw_track.merge(overrides)
     )
@@ -93,7 +93,7 @@ RSpec.describe MoodGroundingService do
     allow(itunes_matcher).to receive(:find_previews).and_return(
       [ itunes_match("https://example.com/preview.m4a", 0.9) ]
     )
-    allow(feature_extractor).to receive(:analyze).and_raise(MoodProbe::UnreadableAudioError, "corrupt")
+    allow(feature_extractor).to receive(:analyze).and_raise(Sonance::UnreadableAudioError, "corrupt")
     allow(youtube_matcher).to receive(:find_clips).and_return([])
 
     expect(service.ground(album)[:mood_source]).to eq("llm_only")
@@ -103,14 +103,14 @@ RSpec.describe MoodGroundingService do
     preview_url = "https://example.com/preview.m4a"
     allow(itunes_matcher).to receive(:find_previews).and_return([ itunes_match(preview_url, 0.9) ])
     allow(feature_extractor).to receive(:analyze)
-      .and_raise(MoodProbe::MalformedOutputError, "valence_emomusic is outside sanity range -3.0..13.0")
+      .and_raise(Sonance::MalformedOutputError, "valence_emomusic is outside sanity range -3.0..13.0")
     allow(youtube_matcher).to receive(:find_clips).and_return([])
     allow(Rails.logger).to receive(:error)
 
     expect(service.ground(album)[:mood_source]).to eq("llm_only")
     expect(Rails.logger).to have_received(:error)
       .with(
-        /album_id=#{album.id}.*source=iTunes.*error=MoodProbe::MalformedOutputError.*attempted=1 contributing=0/
+        /album_id=#{album.id}.*source=iTunes.*error=Sonance::MalformedOutputError.*attempted=1 contributing=0/
       )
   end
 
@@ -118,7 +118,7 @@ RSpec.describe MoodGroundingService do
     allow(itunes_matcher).to receive(:find_previews).and_return(
       [ itunes_match("https://example.com/preview.m4a", 0.9), itunes_match("https://example.com/preview.m4a", 0.9) ]
     )
-    allow(feature_extractor).to receive(:analyze).and_raise(MoodProbe::InferenceError, "boom")
+    allow(feature_extractor).to receive(:analyze).and_raise(Sonance::InferenceError, "boom")
     allow(youtube_matcher).to receive(:find_clips).and_return([ "/tmp/clip.m4a" ])
     allow(feature_extractor).to receive(:analyze)
       .with("/tmp/clip.m4a", descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
@@ -134,7 +134,7 @@ RSpec.describe MoodGroundingService do
       Array.new(2) { itunes_match("https://example.com/missing.m4a", 0.9) }
     )
     allow(youtube_matcher).to receive(:find_clips).and_return([ "/tmp/one.m4a", "/tmp/two.m4a" ])
-    allow(feature_extractor).to receive(:analyze).and_raise(MoodProbe::InferenceError, "boom")
+    allow(feature_extractor).to receive(:analyze).and_raise(Sonance::InferenceError, "boom")
 
     expect(service.ground(album)[:mood_source]).to eq("llm_only")
   end
@@ -150,13 +150,13 @@ RSpec.describe MoodGroundingService do
       Array.new(4) { itunes_match("https://example.com/mixed.m4a", 0.9) }
     )
     allow(youtube_matcher).to receive(:find_clips).and_return([ "/tmp/one.m4a", "/tmp/two.m4a" ])
-    allow(feature_extractor).to receive(:analyze).and_raise(MoodProbe::UnreadableAudioError, "corrupt")
+    allow(feature_extractor).to receive(:analyze).and_raise(Sonance::UnreadableAudioError, "corrupt")
 
     expect { service.ground(album) }
       .to raise_error(
         MoodGroundingService::SystematicTrackFailure,
-        "2 iTunes tracks failed with MoodProbe::UnreadableAudioError; " \
-        "2 YouTube tracks failed with MoodProbe::UnreadableAudioError"
+        "2 iTunes tracks failed with Sonance::UnreadableAudioError; " \
+        "2 YouTube tracks failed with Sonance::UnreadableAudioError"
       )
   end
 
@@ -192,7 +192,7 @@ RSpec.describe MoodGroundingService do
     allow(itunes_matcher).to receive(:find_previews).and_return(
       Array.new(2) { itunes_match("https://example.com/preview.m4a", 0.9) }
     )
-    allow(feature_extractor).to receive(:analyze).and_raise(MoodProbe::InferenceError, "boom")
+    allow(feature_extractor).to receive(:analyze).and_raise(Sonance::InferenceError, "boom")
     expect(youtube_matcher).not_to receive(:find_clips)
 
     expect(disabled_service.ground(album)[:mood_source]).to eq("llm_only")
@@ -202,7 +202,7 @@ RSpec.describe MoodGroundingService do
     allow(itunes_matcher).to receive(:find_previews).and_return(
       Array.new(2) { itunes_match("https://example.com/preview.m4a", 0.9) }
     )
-    allow(feature_extractor).to receive(:analyze).and_raise(MoodProbe::InferenceError, "boom")
+    allow(feature_extractor).to receive(:analyze).and_raise(Sonance::InferenceError, "boom")
     allow(youtube_matcher).to receive(:find_clips).and_return([])
 
     expect(service.ground(album)[:mood_source]).to eq("llm_only")
@@ -211,7 +211,7 @@ RSpec.describe MoodGroundingService do
   it "degrades silently when only YouTube fails uniformly" do
     allow(itunes_matcher).to receive(:find_previews).and_return([])
     allow(youtube_matcher).to receive(:find_clips).and_return([ "/tmp/one.m4a", "/tmp/two.m4a" ])
-    allow(feature_extractor).to receive(:analyze).and_raise(MoodProbe::InferenceError, "boom")
+    allow(feature_extractor).to receive(:analyze).and_raise(Sonance::InferenceError, "boom")
 
     expect(service.ground(album)[:mood_source]).to eq("llm_only")
   end
@@ -223,7 +223,7 @@ RSpec.describe MoodGroundingService do
     call_count = 0
     allow(feature_extractor).to receive(:analyze) do
       call_count += 1
-      call_count == 1 ? raise(MoodProbe::MalformedOutputError, "bad valence") : analysis(valence_emomusic: 7.4)
+      call_count == 1 ? raise(Sonance::MalformedOutputError, "bad valence") : analysis(valence_emomusic: 7.4)
     end
     allow(Rails.logger).to receive(:error)
     allow(Rails.logger).to receive(:info)
@@ -235,7 +235,7 @@ RSpec.describe MoodGroundingService do
     expect(result[:spread][:valence]).to eq(0.0)
     expect(Rails.logger).to have_received(:error)
       .with(
-        /album_id=#{album.id}.*source=iTunes.*track_number=1.*error=MoodProbe::MalformedOutputError.*attempted=2 contributing=1/
+        /album_id=#{album.id}.*source=iTunes.*track_number=1.*error=Sonance::MalformedOutputError.*attempted=2 contributing=1/
       )
     expect(Rails.logger).to have_received(:info)
       .with(/album_id=#{album.id}.*source=iTunes.*attempted=2 contributing=1/)
@@ -245,7 +245,7 @@ RSpec.describe MoodGroundingService do
     allow(itunes_matcher).to receive(:find_previews).and_return(
       [ itunes_match("https://example.com/preview.m4a", 0.9), itunes_match("https://example.com/preview.m4a", 0.9) ]
     )
-    errors = [ MoodProbe::InferenceError.new("inference"), MoodProbe::TimeoutError.new("timeout") ]
+    errors = [ Sonance::InferenceError.new("inference"), Sonance::TimeoutError.new("timeout") ]
     allow(feature_extractor).to receive(:analyze) { raise errors.shift }
     allow(youtube_matcher).to receive(:find_clips).and_return([])
 
@@ -254,9 +254,9 @@ RSpec.describe MoodGroundingService do
 
   it "propagates fatal extractor errors" do
     allow(itunes_matcher).to receive(:find_previews).and_return([ itunes_match("https://example.com/preview.m4a", 0.9) ])
-    allow(feature_extractor).to receive(:analyze).and_raise(MoodProbe::ConfigurationError, "bad models")
+    allow(feature_extractor).to receive(:analyze).and_raise(Sonance::ConfigurationError, "bad models")
 
-    expect { service.ground(album) }.to raise_error(MoodProbe::ConfigurationError, "bad models")
+    expect { service.ground(album) }.to raise_error(Sonance::ConfigurationError, "bad models")
   end
 
   it "escalates only after both sources fail uniformly across multiple tracks" do
@@ -264,14 +264,14 @@ RSpec.describe MoodGroundingService do
       [ itunes_match("https://example.com/preview.m4a", 0.9), itunes_match("https://example.com/preview.m4a", 0.9) ]
     )
     allow(youtube_matcher).to receive(:find_clips).and_return([ "/tmp/one.m4a", "/tmp/two.m4a" ])
-    allow(feature_extractor).to receive(:analyze).and_raise(MoodProbe::InferenceError, "boom")
+    allow(feature_extractor).to receive(:analyze).and_raise(Sonance::InferenceError, "boom")
     allow(File).to receive(:exist?).and_return(false)
 
     expect { service.ground(album) }
       .to raise_error(
         MoodGroundingService::SystematicTrackFailure,
-        "2 iTunes tracks failed with MoodProbe::InferenceError; " \
-        "2 YouTube tracks failed with MoodProbe::InferenceError"
+        "2 iTunes tracks failed with Sonance::InferenceError; " \
+        "2 YouTube tracks failed with Sonance::InferenceError"
       )
     expect(youtube_matcher).to have_received(:find_clips)
   end
@@ -285,9 +285,9 @@ RSpec.describe MoodGroundingService do
       allow(youtube_matcher).to receive(:find_clips).and_return(paths)
       allow(feature_extractor).to receive(:analyze)
         .with(paths.first, descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
-        .and_raise(MoodProbe::ConfigurationError, "bad models")
+        .and_raise(Sonance::ConfigurationError, "bad models")
 
-      expect { service.ground(album) }.to raise_error(MoodProbe::ConfigurationError, "bad models")
+      expect { service.ground(album) }.to raise_error(Sonance::ConfigurationError, "bad models")
       expect(paths).to all(satisfy { |path| !File.exist?(path) })
     end
   end

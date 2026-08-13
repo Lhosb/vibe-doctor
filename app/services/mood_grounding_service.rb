@@ -1,13 +1,13 @@
 require "securerandom"
 
 class MoodGroundingService
-  class SystematicTrackFailure < MoodProbe::FatalError; end
+  class SystematicTrackFailure < Sonance::FatalError; end
   TrackOmission = Data.define(:error, :track_number)
 
   def initialize(
     itunes_matcher: ItunesPreviewMatcher.new,
     youtube_matcher: YoutubeClipMatcher.new,
-    feature_extractor: MoodProbe::Extractor.new(
+    feature_extractor: Sonance::Extractor.new(
       models_dir: ENV.fetch("ESSENTIA_MODELS_DIR", Rails.root.join("tmp", "essentia_models"))
     ),
     grounding_tracks_per_album: ENV.fetch("GROUNDING_TRACKS_PER_ALBUM", "4").to_i,
@@ -113,7 +113,7 @@ class MoodGroundingService
     dest_path.binwrite(response.body)
     analysis = @feature_extractor.analyze(dest_path, descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
     MoodVectors::EssentiaMapper.new.call(analysis.to_h.transform_values(&:value))
-  rescue MoodProbe::TrackError => e
+  rescue Sonance::TrackError => e
     track_omissions << TrackOmission.new(error: e, track_number:)
     nil
   rescue Faraday::Error => e
@@ -126,7 +126,7 @@ class MoodGroundingService
   def analyze_local_track(clip_path, track_omissions:, track_number:)
     analysis = @feature_extractor.analyze(clip_path, descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
     MoodVectors::EssentiaMapper.new.call(analysis.to_h.transform_values(&:value))
-  rescue MoodProbe::TrackError => e
+  rescue Sonance::TrackError => e
     track_omissions << TrackOmission.new(error: e, track_number:)
     nil
   ensure
