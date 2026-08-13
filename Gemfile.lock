@@ -1,5 +1,5 @@
 GIT
-  remote: git@github.com:Lhosb/sonance.git
+  remote: https://github.com/Lhosb/sonance.git
   revision: cf8e613e9a9b3b3b576df4e20e61e63ec25dffe6
   tag: v0.3.0
   specs:
