@@ -6,7 +6,7 @@ updates:
     interval: weekly
   open-pull-requests-limit: 10
   ignore:
-    - dependency-name: mood_probe
+    - dependency-name: sonance
 - package-ecosystem: github-actions
   directory: "/"
   schedule:
