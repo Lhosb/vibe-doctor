@@ -1,0 +1,29 @@
+The MIT licence in LICENSE covers this repository's own application code only.
+It does not relicense the Essentia model binaries committed to this repository,
+which remain under Creative Commons Attribution-NonCommercial-NoDerivatives 4.0
+International (CC BY-NC-ND 4.0). It does not relicense Essentia itself, which
+is distributed under the GNU Affero General Public License v3.0. Anyone
+redistributing or using this repository takes on the model and Essentia licences
+independently of the MIT licence that covers the application code.
+
+Essentia is invoked as a separate subprocess at runtime; it is not linked into
+or bundled with the application. This is an architectural fact about how the
+application works, not a legal opinion.
+
+The following model files are redistributed in this repository under CC BY-NC-ND 4.0:
+
+  tmp/essentia_models/danceability-msd-musicnn-1.pb
+  tmp/essentia_models/emomusic-msd-musicnn-2.pb
+  tmp/essentia_models/mood_acoustic-msd-musicnn-1.pb
+  tmp/essentia_models/mood_happy-msd-musicnn-1.pb
+  tmp/essentia_models/mood_relaxed-msd-musicnn-1.pb
+  tmp/essentia_models/msd-musicnn-1.pb
+
+These files are distributed by the Music Technology Group at Universitat
+Pompeu Fabra. MTG's own pages conflict between ShareAlike and NoDerivatives
+terms; the compliance floor is CC BY-NC-ND 4.0 under either reading, and this
+notice makes no claim of per-model variation. This application is non-commercial
+and its use of the models is non-commercial under either reading.
+
+Operators are responsible for reviewing and complying with the licences for
+Essentia and each model before installing or using those components.

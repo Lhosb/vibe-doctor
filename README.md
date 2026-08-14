@@ -166,3 +166,9 @@ The gem's current `analyze_all` implementation is itself a loop, so switching
 would not reduce process spawns and would keep every downloaded preview alive
 until the whole album completed. Phase 3.5 will switch when batching provides
 an actual runtime benefit.
+
+## Licences
+
+This repository redistributes Essentia model binaries from the Music Technology
+Group at Universitat Pompeu Fabra. See the [NOTICE](NOTICE) file for attribution
+and licence details.
