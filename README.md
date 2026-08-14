@@ -149,19 +149,19 @@ Production deployment is set up for Kamal.
 - Required production secrets are injected through Kamal secrets and environment
   variables
 
-## Local `mood_probe` development
+## Local `sonance` development
 
-The app resolves `mood_probe` from GitHub for reproducible builds. To use an
+The app resolves `sonance` from GitHub for reproducible builds. To use an
 adjacent local checkout during development:
 
 ```sh
-bundle config set --local local.mood_probe ~/projects/gems/mood_probe
+bundle config set --local local.sonance ~/projects/gems/sonance
 bundle install
 ```
 
 The local checkout must be on the `main` branch named in the Gemfile.
 
-Phase 3 intentionally keeps one `MoodProbe::Extractor#analyze` call per track.
+Phase 3 intentionally keeps one `Sonance::Extractor#analyze` call per track.
 The gem's current `analyze_all` implementation is itself a loop, so switching
 would not reduce process spawns and would keep every downloaded preview alive
 until the whole album completed. Phase 3.5 will switch when batching provides

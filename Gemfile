@@ -31,7 +31,7 @@ gem "solid_queue"
 gem "solid_cable"
 gem "neighbor"
 gem "faraday"
-gem "mood_probe", git: "https://github.com/Lhosb/mood_probe.git", branch: "main"
+gem "sonance", git: "https://github.com/Lhosb/sonance.git", tag: "v0.3.0"
 
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false

@@ -1,33 +1,38 @@
 require "json"
-require "mood_probe"
+require "sonance"
 require "pathname"
 require "spec_helper"
 
 # Run in the Docker image, where essentia-tensorflow is installed:
 #   docker build --platform linux/amd64 -t vibe-doctor-essentia-goldens .
 #   docker run --rm --platform linux/amd64 --entrypoint bash \
-#     -v "$PWD/spec/fixtures/mood_probe/golden:/rails/spec/fixtures/mood_probe/golden" \
+#     -v "$PWD/spec/fixtures/sonance/golden:/rails/spec/fixtures/sonance/golden" \
 #     vibe-doctor-essentia-goldens \
-#     -c "ruby spec/fixtures/mood_probe/generate_goldens.rb"
+#     -c "ruby spec/fixtures/sonance/generate_goldens.rb"
 #   docker run --rm --platform linux/amd64 --entrypoint bash \
 #     -e ESSENTIA_SPECS=1 -e RAILS_ENV=test vibe-doctor-essentia-goldens \
 #     -c "bundle exec rspec spec/integration/essentia_extract_golden_spec.rb --format documentation"
 RSpec.describe "Essentia extraction goldens", :essentia do
   ROOT = Pathname(__dir__).join("../..").expand_path
-  AUDIO_DIR = ROOT.join("spec/fixtures/mood_probe/audio")
-  GOLDEN_DIR = ROOT.join("spec/fixtures/mood_probe/golden")
+  AUDIO_DIR = ROOT.join("spec/fixtures/sonance/audio")
+  GOLDEN_DIR = ROOT.join("spec/fixtures/sonance/golden")
   MODELS_DIR = ROOT.join("tmp/essentia_models")
-  MOOD_HEADS = %w[valence arousal danceability mood_acoustic mood_relaxed mood_happy].sort.freeze
+  DESCRIPTORS = %i[
+    valence_emomusic arousal_emomusic danceability_musicnn mood_acoustic_musicnn
+    mood_relaxed_musicnn mood_happy_musicnn
+  ].freeze
   DECODABLE_FIXTURES = %w[chirp clicks sine_440 white_noise].freeze
   # Relative-bound heads are 10x tighter than Phase 4's 1e-3 ONNX gate; the floor-bound head is ~1.5x tighter.
   # Calibration control: a 0.900e-04 chirp.valence perturbation passed, while 1.100e-04 failed.
+  # This tolerance is load-bearing because emulation generated the goldens while native x86_64 CI extracts them;
+  # tightening it toward exact equality would break this intentional cross-environment configuration.
   GOLDEN_REL_TOL = 1e-4
   GOLDEN_ABS_FLOOR = 1e-10
   CPU_IDENTIFIER = (
     File.exist?("/proc/cpuinfo") && File.read("/proc/cpuinfo")[/^model name\s*:\s*(.+)$/, 1] || "unknown CPU"
   ).freeze
 
-  let(:extractor) { MoodProbe::Extractor.new(models_dir: MODELS_DIR) }
+  let(:extractor) { Sonance::Extractor.new(models_dir: MODELS_DIR) }
 
   DECODABLE_FIXTURES.each do |fixture_name|
     it "matches the #{fixture_name} golden output" do
@@ -35,11 +40,11 @@ RSpec.describe "Essentia extraction goldens", :essentia do
       expect(audio_path).to exist
 
       expected = JSON.parse(GOLDEN_DIR.join("#{fixture_name}.json").read, symbolize_names: true)
-      features = extractor.analyze(audio_path)
-      actual = features.to_h
+      analysis = extractor.analyze(audio_path, descriptors: DESCRIPTORS)
+      actual = analysis.to_h.transform_values(&:value)
 
-      expect(actual.keys.map(&:to_s).sort).to eq(MOOD_HEADS)
-      expect(expected.keys.map(&:to_s).sort).to eq(MOOD_HEADS)
+      expect(actual.keys).to eq(DESCRIPTORS)
+      expect(expected.keys).to eq(DESCRIPTORS)
 
       comparisons = expected.to_h do |head, expected_value|
         actual_value = actual.fetch(head)
@@ -51,6 +56,8 @@ RSpec.describe "Essentia extraction goldens", :essentia do
           absolute_deviation / expected_value.abs
         end
         tolerance = [ GOLDEN_REL_TOL * expected_value.abs, GOLDEN_ABS_FLOOR ].max
+        puts "#{fixture_name}.#{head}: abs #{format("%.3e", absolute_deviation)}, " \
+             "rel #{format("%.3e", relative_deviation)}, tolerance #{format("%.3e", tolerance)}"
 
         [ head, { actual: actual_value, expected: expected_value, absolute_deviation:, relative_deviation:, tolerance: } ]
       end
@@ -76,6 +83,8 @@ RSpec.describe "Essentia extraction goldens", :essentia do
     audio_path = AUDIO_DIR.join("undecodable.m4a")
     expect(audio_path).to exist
 
-    expect { extractor.analyze(audio_path) }.to raise_error(MoodProbe::UnreadableAudioError)
+    expect {
+      extractor.analyze(audio_path, descriptors: DESCRIPTORS)
+    }.to raise_error(Sonance::UnreadableAudioError)
   end
 end

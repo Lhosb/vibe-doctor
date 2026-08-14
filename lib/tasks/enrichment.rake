@@ -2,7 +2,7 @@ module EnrichmentRun
   # Five catches a catalogue outage early while tolerating four genuinely unmatchable albums in a row.
   CONSECUTIVE_LLM_ONLY_LIMIT = 5
 
-  class ConsecutiveLlmOnlyError < MoodProbe::FatalError; end
+  class ConsecutiveLlmOnlyError < Sonance::FatalError; end
 end
 
 namespace :enrichment do
@@ -15,10 +15,10 @@ namespace :enrichment do
        "marked grounded via the llm_only fallback (production ran without a working " \
        "essentia toolchain, so none of them ever got real audio analysis)"
   task reground_all: :environment do
-    feature_extractor = MoodProbe::Extractor.new(
+    feature_extractor = Sonance::Extractor.new(
       models_dir: ENV.fetch("ESSENTIA_MODELS_DIR", Rails.root.join("tmp", "essentia_models"))
     )
-    feature_extractor.verify!
+    feature_extractor.verify!(descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
 
     albums = Album.all.to_a
     albums.each(&:reset_enrichment!)
@@ -28,7 +28,7 @@ end
 
 def run_enrichment(
   albums,
-  feature_extractor: MoodProbe::Extractor.new(
+  feature_extractor: Sonance::Extractor.new(
     models_dir: ENV.fetch("ESSENTIA_MODELS_DIR", Rails.root.join("tmp", "essentia_models"))
   )
 )
@@ -41,12 +41,12 @@ def run_enrichment(
       "so the run-level consecutive llm_only guard is the backstop"
     )
   end
-  feature_extractor.verify!
+  feature_extractor.verify!(descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
 
   albums.each do |album|
     begin
       EnrichAlbumJob.perform_now(album, feature_extractor:)
-    rescue MoodProbe::FatalError
+    rescue Sonance::FatalError
       failed += 1
       raise
     rescue StandardError => e
