@@ -70,7 +70,7 @@ group :test do
   gem "webmock"
   # Drives headless Chrome for js: true system specs (Turbo Stream/fetch-driven flows
   # that rack_test cannot execute).
-  gem "selenium-webdriver", "~> 4.11"
+  gem "selenium-webdriver", "~> 4.47"
 end
 
 group :development do
