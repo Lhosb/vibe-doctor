@@ -2,15 +2,25 @@ require "rails_helper"
 
 RSpec.describe MoodVectors::EssentiaMapper do
   describe "#call" do
-    def descriptors_with(**overrides)
-      {
+    def descriptors_with(softmax_value: nil, **overrides)
+      descriptors = {
         valence_emomusic: 5.0,
         arousal_emomusic: 5.0,
         danceability_musicnn: 0.2,
         mood_acoustic_musicnn: 0.3,
         mood_relaxed_musicnn: 0.4,
         mood_happy_musicnn: 0.6
-      }.merge(overrides)
+      }
+      if softmax_value
+        descriptors.merge!(
+          danceability_musicnn: softmax_value,
+          mood_acoustic_musicnn: softmax_value,
+          mood_relaxed_musicnn: softmax_value,
+          mood_happy_musicnn: softmax_value
+        )
+      end
+
+      descriptors.merge(overrides)
     end
 
     it "maps native descriptor values to symbol-keyed mood heads" do
@@ -50,20 +60,22 @@ RSpec.describe MoodVectors::EssentiaMapper do
       expect(below_range.fetch(:arousal)).to eq(0.0)
     end
 
-    it "clamps softmax heads to the MoodVector range", :aggregate_failures do
-      descriptors = descriptors_with(
-        danceability_musicnn: 1.1,
-        mood_acoustic_musicnn: -0.1,
-        mood_relaxed_musicnn: 1.1,
-        mood_happy_musicnn: -0.1
-      )
+    it "clamps softmax heads below the MoodVector range", :aggregate_failures do
+      result = described_class.new.call(descriptors_with(softmax_value: -0.1))
 
-      result = described_class.new.call(descriptors)
+      expect(result.fetch(:danceability)).to eq(0.0)
+      expect(result.fetch(:mood_acoustic)).to eq(0.0)
+      expect(result.fetch(:mood_relaxed)).to eq(0.0)
+      expect(result.fetch(:mood_happy)).to eq(0.0)
+    end
+
+    it "clamps softmax heads above the MoodVector range", :aggregate_failures do
+      result = described_class.new.call(descriptors_with(softmax_value: 1.1))
 
       expect(result.fetch(:danceability)).to eq(1.0)
-      expect(result.fetch(:mood_acoustic)).to eq(0.0)
+      expect(result.fetch(:mood_acoustic)).to eq(1.0)
       expect(result.fetch(:mood_relaxed)).to eq(1.0)
-      expect(result.fetch(:mood_happy)).to eq(0.0)
+      expect(result.fetch(:mood_happy)).to eq(1.0)
     end
 
     it "rejects a missing descriptor" do
