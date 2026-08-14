@@ -169,6 +169,9 @@ an actual runtime benefit.
 
 ## Licences
 
-This repository redistributes Essentia model binaries from the Music Technology
-Group at Universitat Pompeu Fabra. See the [NOTICE](NOTICE) file for attribution
-and licence details.
+This application is MIT-licensed. See [LICENSE](LICENSE).
+
+The Essentia model files used by this application are CC BY-NC-ND 4.0 and are
+fetched at image build time from essentia.upf.edu. Essentia itself is AGPL-3.0.
+See [NOTICE](NOTICE) for full attribution, licence URIs, and per-model source
+URLs.

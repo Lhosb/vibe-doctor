@@ -30,9 +30,6 @@
 /tmp/storage/*
 !/tmp/storage/.keep
 
-# Keep Essentia mood-model weights; EnrichAlbumJob needs them at runtime in every environment.
-!/tmp/essentia_models/
-!/tmp/essentia_models/*.pb
 
 # Ignore assets.
 /node_modules/

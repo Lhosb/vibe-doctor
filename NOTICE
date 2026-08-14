@@ -15,30 +15,33 @@ AGPL-3.0) is installed into the deployed image at /usr/local/essentia-venv.
 This is an architectural fact about how the application works, not a legal
 opinion.
 
-The following model files are currently tracked in this repository. When issue
-#23 (remove vendored model binaries from the tracked tree) lands, this sentence
-and the list below must be revisited — at that point the files will ship via a
-download step at build or runtime, not as committed objects.
+The following six model files were previously redistributed as tracked objects in
+this repository's git history and remain in that history. They are no longer
+present in the working tree; as of issue #23 they are fetched at image build
+time from essentia.upf.edu and are baked into the final Docker image
+(/usr/local/essentia-models/). They are not committed to the working tree.
+Attribution obligations for these files survive their removal from the working
+tree — the bytes were distributed here.
 
 Creator: Music Technology Group, Universitat Pompeu Fabra
 Models base URL: https://essentia.upf.edu/models/
 
-  tmp/essentia_models/danceability-msd-musicnn-1.pb
+  danceability-msd-musicnn-1.pb  (was tmp/essentia_models/danceability-msd-musicnn-1.pb in git history)
     https://essentia.upf.edu/models/classification-heads/danceability/danceability-msd-musicnn-1.pb
 
-  tmp/essentia_models/emomusic-msd-musicnn-2.pb
+  emomusic-msd-musicnn-2.pb  (was tmp/essentia_models/emomusic-msd-musicnn-2.pb in git history)
     https://essentia.upf.edu/models/classification-heads/emomusic/emomusic-msd-musicnn-2.pb
 
-  tmp/essentia_models/mood_acoustic-msd-musicnn-1.pb
+  mood_acoustic-msd-musicnn-1.pb  (was tmp/essentia_models/mood_acoustic-msd-musicnn-1.pb in git history)
     https://essentia.upf.edu/models/classification-heads/mood_acoustic/mood_acoustic-msd-musicnn-1.pb
 
-  tmp/essentia_models/mood_happy-msd-musicnn-1.pb
+  mood_happy-msd-musicnn-1.pb  (was tmp/essentia_models/mood_happy-msd-musicnn-1.pb in git history)
     https://essentia.upf.edu/models/classification-heads/mood_happy/mood_happy-msd-musicnn-1.pb
 
-  tmp/essentia_models/mood_relaxed-msd-musicnn-1.pb
+  mood_relaxed-msd-musicnn-1.pb  (was tmp/essentia_models/mood_relaxed-msd-musicnn-1.pb in git history)
     https://essentia.upf.edu/models/classification-heads/mood_relaxed/mood_relaxed-msd-musicnn-1.pb
 
-  tmp/essentia_models/msd-musicnn-1.pb
+  msd-musicnn-1.pb  (was tmp/essentia_models/msd-musicnn-1.pb in git history)
     https://essentia.upf.edu/models/feature-extractors/musicnn/msd-musicnn-1.pb
 
 MTG's own pages conflict between ShareAlike and NoDerivatives terms; the
