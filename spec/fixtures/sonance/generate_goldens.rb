@@ -6,7 +6,7 @@ require "rbconfig"
 root = Pathname(__dir__).join("../../..").expand_path
 audio_dir = root.join("spec/fixtures/sonance/audio")
 golden_dir = root.join("spec/fixtures/sonance/golden")
-models_dir = root.join("tmp/essentia_models")
+models_dir = Pathname(ENV.fetch("ESSENTIA_MODELS_DIR", root.join("tmp/essentia_models").to_s))
 descriptors = %i[
   valence_emomusic arousal_emomusic danceability_musicnn mood_acoustic_musicnn
   mood_relaxed_musicnn mood_happy_musicnn

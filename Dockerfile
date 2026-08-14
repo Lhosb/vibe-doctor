@@ -35,6 +35,7 @@ ENV RAILS_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
     BUNDLE_PATH="/usr/local/bundle" \
     BUNDLE_WITHOUT="development" \
+    ESSENTIA_MODELS_DIR="/usr/local/essentia-models" \
     LD_PRELOAD="/usr/local/lib/libjemalloc.so"
 
 # Throw-away build stage to reduce size of final image
@@ -54,6 +55,12 @@ RUN bundle install && \
     # -j 1 disable parallel compilation to avoid a QEMU bug: https://github.com/rails/bootsnap/issues/495
     bundle exec bootsnap precompile -j 1 --gemfile
 
+# Fetch Essentia mood models into a dedicated directory. This layer depends only
+# on Gemfile.lock (copied above), so code-only deploys leave it cached. Build
+# fails here—rather than at first enrichment—if essentia.upf.edu is unreachable
+# or a digest mismatches.
+RUN bundle exec sonance models fetch --models-dir $ESSENTIA_MODELS_DIR
+
 # Copy application code
 COPY . .
 
@@ -63,8 +70,6 @@ RUN bundle exec bootsnap precompile -j 1 app/ lib/
 
 # Precompiling assets for production without requiring secret RAILS_MASTER_KEY
 RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
-
-
 
 
 # Final stage for app image
@@ -78,6 +83,12 @@ USER 1000:1000
 # Copy built artifacts: gems, application
 COPY --chown=rails:rails --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --chown=rails:rails --from=build /rails /rails
+COPY --chown=rails:rails --from=build /usr/local/essentia-models /usr/local/essentia-models
+
+# Verify model digests and the models directory's ownership and mode, as the runtime user.
+# (Individual model files: digest, presence, regular-file, and anti-symlink checks.
+#  Models directory: uid ownership and write-permission checks.)
+RUN bundle exec sonance models verify --models-dir $ESSENTIA_MODELS_DIR
 
 # Entrypoint prepares the database.
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]

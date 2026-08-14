@@ -16,7 +16,7 @@ RSpec.describe "Essentia extraction goldens", :essentia do
   ROOT = Pathname(__dir__).join("../..").expand_path
   AUDIO_DIR = ROOT.join("spec/fixtures/sonance/audio")
   GOLDEN_DIR = ROOT.join("spec/fixtures/sonance/golden")
-  MODELS_DIR = ROOT.join("tmp/essentia_models")
+  MODELS_DIR = Pathname(ENV.fetch("ESSENTIA_MODELS_DIR", ROOT.join("tmp/essentia_models").to_s))
   DESCRIPTORS = %i[
     valence_emomusic arousal_emomusic danceability_musicnn mood_acoustic_musicnn
     mood_relaxed_musicnn mood_happy_musicnn
