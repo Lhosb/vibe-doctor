@@ -292,6 +292,6 @@ RSpec.describe MoodVectors::CatalogueScale do
     report = described_class.reference_distance_report(scope: MoodVector.where(mood_source: %w[essentia_itunes essentia_youtube]))
     expect(report.fetch(:row_count)).to eq(4)
     expect(report.fetch(:pair_count)).to eq(6)
-    expect(report.fetch(:reference_distance_from_constants)).to be_a(Float)
+    expect(report.fetch(:reference_distance_from_constants)).to be_within(1e-12).of(10.53480373018995)
   end
 end
