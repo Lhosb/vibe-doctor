@@ -10,8 +10,10 @@ licence that covers the application code.
   AGPL-3.0:        https://www.gnu.org/licenses/agpl-3.0.html
 
 Essentia is invoked as a separate subprocess at runtime; it is not linked into
-or bundled with the application. This is an architectural fact about how the
-application works, not a legal opinion.
+the application. The essentia-tensorflow distribution (version 2.1b6.dev1389,
+AGPL-3.0) is installed into the deployed image at /usr/local/essentia-venv.
+This is an architectural fact about how the application works, not a legal
+opinion.
 
 The following model files are currently tracked in this repository. When issue
 #23 (remove vendored model binaries from the tracked tree) lands, this sentence
