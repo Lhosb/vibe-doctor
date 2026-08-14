@@ -1,6 +1,6 @@
 module MoodVectors
   class CatalogueScale
-    VERSION = "2026-08-14-v1".freeze
+    VERSION = "2026-08-14-v2".freeze
 
     # Measured on vibe_doctor_development, 2026-08-14.
     # Row filter: mood_source LIKE 'essentia%'. n = 321 (essentia_itunes=314, essentia_youtube=7).
@@ -27,9 +27,9 @@ module MoodVectors
       mood_relaxed: 0.3136
     }.freeze
 
-    # Baseline median pairwise Euclidean distance from the fixed query set captured in
-    # docs/superpowers/specs/2026-08-14-mood-scale/baseline.md, BEFORE metric changes.
-    REFERENCE_DISTANCE = 0.809199
+    # Baseline median pairwise standardized distance over grounded catalog rows in z-space.
+    # This is d_z from principal.md §4.2, not stored-space Euclidean distance in 0..1.
+    REFERENCE_DISTANCE = 3.021725
 
     # Finding B limitation (principal.md §3.5): the six heads are not six independent dimensions.
     # In the measured catalog, corr(arousal, mood_relaxed) = -0.9014. Per-head standardization
@@ -39,9 +39,8 @@ module MoodVectors
       arousal_vs_mood_relaxed: -0.9014
     }.freeze
 
-    # Drift check query for reviewer/operator runs against a grounded catalog dataset.
-    # Expected usage: run against development/production-like data and compare to MU/SIGMA using
-    # DRIFT_TOLERANCE_RELATIVE. Not executed in test suite because tests run against an empty DB.
+    # Drift check query for reviewer/operator inspection against grounded catalog rows.
+    # The executable drift gate used by specs is implemented by recompute_statistics + drift_report.
     DRIFT_CHECK_SQL = <<~SQL.freeze
       WITH rows AS (
         SELECT valence, arousal, danceability, mood_acoustic, mood_happy, mood_relaxed
@@ -83,6 +82,76 @@ module MoodVectors
       def sigma = SIGMA
       def reference_distance = REFERENCE_DISTANCE
       def finding_b_correlation = FINDING_B_CORRELATION
+
+      def recompute_statistics(scope: grounded_scope)
+        rows = scope.pluck(*HEADS)
+        row_count = rows.size
+        raise ArgumentError, "drift check requires grounded mood rows" if row_count.zero?
+
+        values_by_head = rows.transpose
+        observed_mu = {}
+        observed_sigma = {}
+
+        HEADS.each_with_index do |head, index|
+          values = values_by_head.fetch(index)
+          mean = values.sum.fdiv(row_count)
+          variance = values.sum { |value| (value - mean)**2 }.fdiv(row_count)
+
+          observed_mu[head] = mean
+          observed_sigma[head] = Math.sqrt(variance)
+        end
+
+        {
+          row_count:,
+          mu: observed_mu.freeze,
+          sigma: observed_sigma.freeze
+        }.freeze
+      end
+
+      def evaluate_sigma_drift(observed_sigma:, baseline_sigma: SIGMA, tolerance_relative: DRIFT_TOLERANCE_RELATIVE)
+        relative_drift = HEADS.index_with do |head|
+          baseline = baseline_sigma.fetch(head).to_f
+          observed = observed_sigma.fetch(head).to_f
+          ((observed - baseline).abs / baseline)
+        end
+
+        breaches = relative_drift.filter_map do |head, drift|
+          head if drift > tolerance_relative
+        end
+
+        {
+          row_count: nil,
+          tolerance_relative:,
+          relative_drift: relative_drift.freeze,
+          breaches: breaches.freeze,
+          within_tolerance: breaches.empty?
+        }.freeze
+      end
+
+      def drift_report(scope: grounded_scope, baseline_sigma: SIGMA, tolerance_relative: DRIFT_TOLERANCE_RELATIVE)
+        stats = recompute_statistics(scope:)
+        drift = evaluate_sigma_drift(
+          observed_sigma: stats.fetch(:sigma),
+          baseline_sigma:,
+          tolerance_relative:
+        )
+
+        {
+          row_count: stats.fetch(:row_count),
+          mu: stats.fetch(:mu),
+          sigma: stats.fetch(:sigma),
+          tolerance_relative: drift.fetch(:tolerance_relative),
+          relative_drift: drift.fetch(:relative_drift),
+          breaches: drift.fetch(:breaches),
+          within_tolerance: drift.fetch(:within_tolerance)
+        }.freeze
+      end
+
+      private
+
+      def grounded_scope
+        MoodVector.where("mood_source LIKE 'essentia%'")
+      end
     end
   end
 end
