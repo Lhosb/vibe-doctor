@@ -243,10 +243,10 @@ GEM
       racc (~> 1.4)
     nokogiri (1.19.4-x86_64-linux-musl)
       racc (~> 1.4)
-    openai (0.77.1)
+    openai (0.78.0)
       base64
       cgi
-      connection_pool
+      connection_pool (>= 2.2.3)
     ostruct (0.6.3)
     pagy (43.6.1)
       json
@@ -481,7 +481,7 @@ DEPENDENCIES
   kamal
   madmin (~> 2.4)
   neighbor
-  openai (~> 0.77.1)
+  openai (~> 0.78.0)
   pg (~> 1.1)
   propshaft
   puma (>= 5.0)
@@ -592,7 +592,7 @@ CHECKSUMS
   nokogiri (1.19.4-arm64-darwin) sha256=a46db9853286e6597b36ebc6953817d15acf3a299583eb3f89fdc6f91dd63527
   nokogiri (1.19.4-x86_64-linux-gnu) sha256=379fae440b28915e3f19d752ce2dcf8465ed2b2fbefd2a7ca0dd497bc981a06a
   nokogiri (1.19.4-x86_64-linux-musl) sha256=17dfb7c1fa194ae02fbf7c51a7afc8d278045ab3fdacfd86f91d02d7b274470b
-  openai (0.77.1) sha256=cf5fb9b68e1a8f1d8afbebb041b7b182fc6f4fb062626536a5c00dd89f7fad1a
+  openai (0.78.0) sha256=776d53c6793862d79c85eddd689951be3a626dde9b28850c47f6bf1d2fcb9ac8
   ostruct (0.6.3) sha256=95a2ed4a4bd1d190784e666b47b2d3f078e4a9efda2fccf18f84ddc6538ed912
   pagy (43.6.1) sha256=59fb6a58ea956480094a167b43a86796638ceb3a3917a25ae67973b584ace2eb
   parallel (2.1.0) sha256=b35258865c2e31134c5ecb708beaaf6772adf9d5efae28e93e99260877b09356
