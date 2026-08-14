@@ -4,7 +4,7 @@ module MoodVectors
 
     # Measured on vibe_doctor_development, 2026-08-14.
     # Row filter: mood_source LIKE 'essentia%'. n = 321 (essentia_itunes=314, essentia_youtube=7).
-    # NOTE: this is not a production-representative sample.
+    # NOTE: production representativeness is unverified.
     SAMPLE_SIZE = 321
 
     # Per-head mean (mu) in stored 0..1 space.
@@ -29,11 +29,15 @@ module MoodVectors
 
     # Baseline median pairwise standardized distance over grounded catalog rows in z-space.
     # This is d_z from principal.md §4.2, not stored-space Euclidean distance in 0..1.
+    # The constant is published to 10dp; re-derivation from published SIGMA is stable to 9dp
+    # because the tenth digit comes from full-precision sigma used during measurement.
     REFERENCE_DISTANCE = 3.0217250259
 
     # Finding B limitation (principal.md §3.5): the six heads are not six independent dimensions.
     # In the measured catalog, corr(arousal, mood_relaxed) = -0.9014. Per-head standardization
     # therefore still weights the energy/relaxation axis more than an independent axis would.
+    # corr(valence, arousal) = +0.7146 matters because these are the two EMOMUSIC heads raised
+    # to parity in this track, so their contribution is closer to ~1.7 effective dimensions than 2.
     # This limitation is declared, not solved, in this ticket.
     FINDING_B_CORRELATION = {
       arousal_vs_mood_relaxed: -0.9014,
@@ -153,20 +157,12 @@ module MoodVectors
         row_count = rows.size
         raise ArgumentError, "reference distance check requires grounded mood rows" if row_count.zero?
 
-        values_by_head = rows.transpose
-        sigma = HEADS.each_with_index.to_h do |head, index|
-          values = values_by_head.fetch(index)
-          mean = values.sum.fdiv(row_count)
-          variance = values.sum { |value| (value - mean)**2 }.fdiv(row_count)
-          [ head, Math.sqrt(variance) ]
-        end
-
         distances = []
         rows.each_with_index do |left, left_index|
           ((left_index + 1)...rows.length).each do |right_index|
             right = rows.fetch(right_index)
             squared = HEADS.each_with_index.sum do |head, dim|
-              ((left.fetch(dim) - right.fetch(dim)) / sigma.fetch(head))**2
+              ((left.fetch(dim) - right.fetch(dim)) / SIGMA.fetch(head))**2
             end
             distances << Math.sqrt(squared)
           end
@@ -188,8 +184,6 @@ module MoodVectors
       end
 
       private
-
-      def grounded_scope = MoodVector.where("mood_source LIKE 'essentia%'")
     end
   end
 end

@@ -32,7 +32,7 @@ RSpec.describe MoodVectors::CatalogueScale do
     expect(described_class::REFERENCE_DISTANCE).to eq(3.0217250259)
   end
 
-  it "pins frozen mu and sigma constants to measured grounded-catalog values" do
+  it "pins frozen mu and sigma constants to the approved frozen values" do
     expected_mu = {
       valence: 0.5113469703,
       arousal: 0.4924708821,
@@ -176,24 +176,76 @@ RSpec.describe MoodVectors::CatalogueScale do
     expect(inside_report.fetch(:breaches)).to be_empty
   end
 
-  it "re-derives reference distance from published constants on a deterministic fixture set" do
+  it "fails and passes around the growth-side breach boundary" do
+    album_a = create(:album, master_id: 21_001)
+    album_b = create(:album, master_id: 21_002)
+    album_c = create(:album, master_id: 21_003)
+
+    create(
+      :mood_vector,
+      album: album_a,
+      mood_source: "essentia_itunes",
+      valence: 0.20,
+      arousal: 0.40,
+      danceability: 0.10,
+      mood_acoustic: 0.25,
+      mood_happy: 0.35,
+      mood_relaxed: 0.70
+    )
+    create(
+      :mood_vector,
+      album: album_b,
+      mood_source: "essentia_youtube",
+      valence: 0.50,
+      arousal: 0.60,
+      danceability: 0.50,
+      mood_acoustic: 0.55,
+      mood_happy: 0.65,
+      mood_relaxed: 0.40
+    )
+    create(
+      :mood_vector,
+      album: album_c,
+      mood_source: "essentia_itunes",
+      valence: 0.80,
+      arousal: 0.80,
+      danceability: 0.90,
+      mood_acoustic: 0.85,
+      mood_happy: 0.95,
+      mood_relaxed: 0.10
+    )
+
+    scope = MoodVector.where(mood_source: %w[essentia_itunes essentia_youtube])
+    observed_sigma = described_class.recompute_statistics(scope:).fetch(:sigma)
+
+    outside_band_baseline = observed_sigma.merge(mood_happy: observed_sigma.fetch(:mood_happy) / 1.251)
+    inside_band_baseline = observed_sigma.merge(mood_happy: observed_sigma.fetch(:mood_happy) / 1.249)
+
+    outside_report = described_class.drift_report(scope:, baseline_sigma: outside_band_baseline)
+    inside_report = described_class.drift_report(scope:, baseline_sigma: inside_band_baseline)
+
+    expect(outside_report.fetch(:row_count)).to eq(3)
+    expect(outside_report.fetch(:within_tolerance)).to be(false)
+    expect(outside_report.fetch(:breaches)).to include(:mood_happy)
+
+    expect(inside_report.fetch(:row_count)).to eq(3)
+    expect(inside_report.fetch(:within_tolerance)).to be(true)
+    expect(inside_report.fetch(:breaches)).to be_empty
+  end
+
+  it "re-derives deterministic fixture distance from published SIGMA constants" do
     rows = [
       [ 0.40, 0.41, 0.20, 0.10, 0.30, 0.90 ],
       [ 0.50, 0.51, 0.50, 0.40, 0.60, 0.30 ],
       [ 0.60, 0.61, 0.80, 0.70, 0.90, 0.10 ]
     ]
     columns = described_class::HEADS
-    sigma = rows.transpose.map do |values|
-      mean = values.sum.fdiv(values.size)
-      Math.sqrt(values.sum { |value| (value - mean)**2 }.fdiv(values.size))
-    end
-
     distances = []
     rows.each_with_index do |left, left_index|
       ((left_index + 1)...rows.length).each do |right_index|
         right = rows.fetch(right_index)
-        squared = columns.each_index.sum do |index|
-          ((left.fetch(index) - right.fetch(index)) / sigma.fetch(index))**2
+        squared = columns.each_with_index.sum do |head, index|
+          ((left.fetch(index) - right.fetch(index)) / described_class::SIGMA.fetch(head))**2
         end
         distances << Math.sqrt(squared)
       end
@@ -212,5 +264,34 @@ RSpec.describe MoodVectors::CatalogueScale do
     expect(report.fetch(:row_count)).to eq(3)
     expect(report.fetch(:pair_count)).to eq(3)
     expect(report.fetch(:reference_distance_from_constants)).to be_within(1e-12).of(expected_reference)
+  end
+
+  it "exercises the even-pair median branch for reference distance" do
+    rows = [
+      [ 0.10, 0.30, 0.20, 0.10, 0.20, 0.90 ],
+      [ 0.20, 0.40, 0.30, 0.20, 0.30, 0.80 ],
+      [ 0.70, 0.60, 0.80, 0.70, 0.90, 0.10 ],
+      [ 0.80, 0.70, 0.90, 0.80, 0.95, 0.05 ]
+    ]
+
+    albums = 4.times.map { |index| create(:album, master_id: 31_001 + index) }
+    rows.each_with_index do |values, index|
+      create(
+        :mood_vector,
+        album: albums.fetch(index),
+        mood_source: index.even? ? "essentia_itunes" : "essentia_youtube",
+        valence: values[0],
+        arousal: values[1],
+        danceability: values[2],
+        mood_acoustic: values[3],
+        mood_happy: values[4],
+        mood_relaxed: values[5]
+      )
+    end
+
+    report = described_class.reference_distance_report(scope: MoodVector.where(mood_source: %w[essentia_itunes essentia_youtube]))
+    expect(report.fetch(:row_count)).to eq(4)
+    expect(report.fetch(:pair_count)).to eq(6)
+    expect(report.fetch(:reference_distance_from_constants)).to be_a(Float)
   end
 end
