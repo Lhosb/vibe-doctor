@@ -429,9 +429,11 @@ today. That is false.
 1. **Owner sign-off on the restatement in §2.** Blocking. Everything below assumes "deliberate and
    reviewable" rather than "raw". If the owner holds the literal reading, stop and re-plan — I do
    not want an implementer discovering the 65/35 flip mid-ticket.
-2. **Measure `REFERENCE_DISTANCE` and the current mean mood term** on a fixed query set. This is
+2. **Measure standardized `REFERENCE_DISTANCE` (`d_z`) as the median pairwise distance over
+   grounded catalogue rows, and measure the current mean mood term on a fixed query set.** This is
    the baseline §4.3's acceptance criterion is measured against; it must be captured *before* any
-   behaviour changes.
+   behaviour changes. *(Corrected on 2026-08-14: the earlier sentence omitted "standardized" and
+   incorrectly implied query-set measurement for `REFERENCE_DISTANCE`.)*
 3. **`MoodVectors::CatalogueScale`** — the frozen `(μ, σ)` table, `VERSION`, the declared Finding B
    limitation, and the drift spec. No behaviour change yet.
 4. **`R` in the metric** — the standardized distance, the §3.3 probit bridge, the §4.2 squash

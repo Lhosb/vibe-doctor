@@ -34,11 +34,11 @@ This is a **development database baseline only**. Production representativeness 
 
 ## Baseline metrics
 
-### Current-space recommendation baseline (unchanged acceptance baseline for §4.3)
+### Current-space recommendation baseline (retained only as §4.3 acceptance input)
 
 Computed using the current Euclidean metric over six stored 0..1 heads and current normalization (`distance / sqrt(6)`), across the fixed query set x grounded catalog matrix.
 
-- Legacy current-space median distance baseline: **0.809199**
+- Current-space query-matrix median distance baseline (round-1 mistaken `REFERENCE_DISTANCE`, retained only as §4.3 acceptance input): **0.809199**
 - Current mean mood term across fixed queries x catalog rows: **0.344698**
 - Mood term min/max over that matrix: **0.066906 / 0.735105**
 
