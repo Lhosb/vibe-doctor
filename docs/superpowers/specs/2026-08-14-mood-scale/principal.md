@@ -1,5 +1,16 @@
 # MOOD-SCALE — Principal Engineer design review
 
+> ## WITHDRAWN (2026-08-14) — DO NOT IMPLEMENT THIS MECHANISM
+>
+> The CatalogueScale-based mechanism in this document was withdrawn on 2026-08-14.
+>
+> Why: recommendation ranking runs inside a **single user's collection**, not a global catalogue
+> (`pipeline.rb:53-55` into `candidate_retrieval.rb:34`), and the constants cited here were
+> measured on **one user collection** (n=1 in the dimension that matters for ranking).
+>
+> Replacement direction: **Option E**, documented in `principal-rereview.md`
+> (`/tmp/maestri-reviews/MOOD-SCALE/principal-rereview.md`).
+>
 **Author:** Keystone (Principal Engineer)
 **Date:** 2026-08-14
 **Repo:** /Users/lukeolson/projects/vibe-doctor
@@ -300,17 +311,24 @@ which is an interpretable calibration point.
 
 ### 4.3 The trap in §4.2 — this silently reweights mood against the facets
 
+> **Correction note (2026-08-14): mean-matching is the wrong acceptance criterion.**
+>
+> The "match the mean mood contribution" criterion in this section is incorrect for ranking
+> stability. Mean-matching yields `W = 0.144894` and cuts within-query dispersion to `0.6074` of
+> its prior value across all 12 fixed queries. Ranking depends on **variation within a query**, not
+> the mean; a constant per-query offset does not change ordering.
+>
+> The correct criterion is **dispersion matching** over the fixed query set. This correction is
+> metric-agnostic and remains valid even though the CatalogueScale mechanism was withdrawn.
+
 `MOOD_VECTOR_WEIGHT = 0.20` (`candidate_retrieval.rb:4`) was tuned against today's mood term.
 Today's term averages roughly 0.30: typical per-musicnn-head difference ≈ 0.37, so
 `d ≈ sqrt(4 · 0.137) ≈ 0.74`, divided by `sqrt(6) = 2.449`. Under the §4.2 squash calibrated at
 the median, the term averages 0.5. **That is a ~1.7× increase in mood's influence over the facet
 embeddings, delivered as a side effect of fixing the intra-mood weighting.**
 
-This must be an explicit, stated recalibration. Either pick `REFERENCE_DISTANCE` so the term's
-mean matches today's, or — cleaner — keep `REFERENCE_DISTANCE` at the interpretable median and
-lower `MOOD_VECTOR_WEIGHT` to ≈ 0.12 so total mood influence is held constant. **Acceptance
-criterion: the mean of `MOOD_VECTOR_WEIGHT · mood_term` over a fixed query set must be within
-10 % of its pre-change value.** Measure it; do not eyeball it.
+This must be an explicit, stated recalibration, but **not by mean-matching**. Use a dispersion
+criterion on `MOOD_VECTOR_WEIGHT · mood_term` over the fixed query set; do not eyeball it.
 
 I would rate shipping §3 without §4.3 as an IMPORTANT-severity defect. It is the kind of change
 that looks like a pure improvement and quietly moves a second dial.

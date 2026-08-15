@@ -4,6 +4,14 @@ Date: 2026-08-14
 
 This baseline is captured **before any mood-metric behaviour change**, per sequence step 2 in principal.md.
 
+> **Population label correction (2026-08-15):**
+> The 321 rows in this baseline are **one user's personal collection**, not a catalogue sample.
+> In this dev environment there are 5 users, only 1 has a collection, that collection contains all
+> 321 grounded albums, and zero grounded albums exist outside it.
+>
+> The 97.21%/2.79% influence split and 31.9x variance ratio cited in related measurement material
+> are **n=1 figures** and **MUST NOT** be quoted as population facts.
+
 ## Fixed query set
 
 12 fixed query vectors in 0..1 space:
@@ -23,11 +31,11 @@ This baseline is captured **before any mood-metric behaviour change**, per seque
 | q11 | 0.70 | 0.70 | 0.30 | 0.30 | 0.70 | 0.30 |
 | q12 | 0.05 | 0.50 | 0.95 | 0.50 | 0.05 | 0.95 |
 
-## Query and catalog provenance
+## Query and collection provenance
 
 - Database used: `vibe_doctor_development`
 - Row filter: `mood_vectors.mood_source LIKE 'essentia%'`
-- Catalog rows used: 321
+- Collection rows used: 321
 - Source split: `essentia_itunes=314`, `essentia_youtube=7`
 
 This is a **development database baseline only**. Production representativeness is unverified.
@@ -36,15 +44,15 @@ This is a **development database baseline only**. Production representativeness 
 
 ### Current-space recommendation baseline (retained only as §4.3 acceptance input)
 
-Computed using the current Euclidean metric over six stored 0..1 heads and current normalization (`distance / sqrt(6)`), across the fixed query set x grounded catalog matrix.
+Computed using the current Euclidean metric over six stored 0..1 heads and current normalization (`distance / sqrt(6)`), across the fixed query set x grounded collection matrix.
 
 - Current-space query-matrix median distance baseline (round-1 mistaken `REFERENCE_DISTANCE`, retained only as §4.3 acceptance input): **0.809199**
-- Current mean mood term across fixed queries x catalog rows: **0.344698**
+- Current mean mood term across fixed queries x collection rows: **0.344698**
 - Mood term min/max over that matrix: **0.066906 / 0.735105**
 
-### Catalogue pairwise reference-distance metrics (for §4.2)
+### Collection pairwise reference-distance metrics (for §4.2)
 
-Computed over grounded catalog **pairwise rows** (`mood_source LIKE 'essentia%'`, n=321):
+Computed over grounded collection **pairwise rows** (`mood_source LIKE 'essentia%'`, n=321):
 
 - Pairwise median distance in stored 0..1 space (`d_01`): **0.785407**
 - Pairwise median distance in standardized z-space (`d_z`): **3.021725**
@@ -65,7 +73,7 @@ Result payload (current-space query baseline):
 {"database_name" => "vibe_doctor_development", "catalog_row_count" => 321, "query_count" => 12, "reference_distance_p50" => 0.809199e0, "mean_mood_term" => 0.344698e0, "min_mood_term" => 0.66906e-1, "max_mood_term" => 0.735105e0}
 ```
 
-Result payload (catalog pairwise 0..1 vs z-space):
+Result payload (collection pairwise 0..1 vs z-space):
 
 ```ruby
 {"database_name" => "vibe_doctor_development", "n" => 321, "reference_distance_01_p50" => 0.7854067049935953, "reference_distance_z_p50" => 3.0217250259286104}
