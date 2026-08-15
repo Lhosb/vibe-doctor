@@ -9,7 +9,7 @@
 > measured on **one user collection** (n=1 in the dimension that matters for ranking).
 >
 > Replacement direction: **Option E**, documented in `principal-rereview.md`
-> (`/tmp/maestri-reviews/MOOD-SCALE/principal-rereview.md`).
+> (`docs/superpowers/specs/2026-08-14-mood-scale/principal-rereview.md`).
 >
 **Author:** Keystone (Principal Engineer)
 **Date:** 2026-08-14
