@@ -4,6 +4,16 @@ Date: 2026-08-14
 
 This baseline is captured **before any mood-metric behaviour change**, per sequence step 2 in principal.md.
 
+## Option E step 1 addendum (2026-08-15)
+
+Committed fixture files for permanent gates now live at:
+
+- `spec/fixtures/mood_scale/catalogue_snapshot.json` (SHA-256: `a2396eb1f52389235d37bedd5f1b63328f8bcdd6ef1ca8dde45055b2fee239b1`)
+- `spec/fixtures/mood_scale/queries.json` (SHA-256: `f686686ebb75b2c9ea78673f824e9ee705f9de3a4393ce1fc5cf21684353b5f1`)
+
+Label correction for this fixture corpus: these 321 rows are one user's personal collection
+(not a population catalogue sample).
+
 ## Fixed query set
 
 12 fixed query vectors in 0..1 space:

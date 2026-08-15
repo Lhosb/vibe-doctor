@@ -1,0 +1,110 @@
+[
+  {
+    "id": "q01",
+    "valence": 0.5,
+    "arousal": 0.5,
+    "danceability": 0.5,
+    "mood_acoustic": 0.5,
+    "mood_happy": 0.5,
+    "mood_relaxed": 0.5
+  },
+  {
+    "id": "q02",
+    "valence": 0.2,
+    "arousal": 0.8,
+    "danceability": 0.4,
+    "mood_acoustic": 0.7,
+    "mood_happy": 0.3,
+    "mood_relaxed": 0.6
+  },
+  {
+    "id": "q03",
+    "valence": 0.8,
+    "arousal": 0.2,
+    "danceability": 0.6,
+    "mood_acoustic": 0.3,
+    "mood_happy": 0.7,
+    "mood_relaxed": 0.4
+  },
+  {
+    "id": "q04",
+    "valence": 0.1,
+    "arousal": 0.9,
+    "danceability": 0.9,
+    "mood_acoustic": 0.2,
+    "mood_happy": 0.85,
+    "mood_relaxed": 0.15
+  },
+  {
+    "id": "q05",
+    "valence": 0.9,
+    "arousal": 0.1,
+    "danceability": 0.1,
+    "mood_acoustic": 0.8,
+    "mood_happy": 0.15,
+    "mood_relaxed": 0.85
+  },
+  {
+    "id": "q06",
+    "valence": 0.35,
+    "arousal": 0.65,
+    "danceability": 0.25,
+    "mood_acoustic": 0.75,
+    "mood_happy": 0.45,
+    "mood_relaxed": 0.55
+  },
+  {
+    "id": "q07",
+    "valence": 0.65,
+    "arousal": 0.35,
+    "danceability": 0.75,
+    "mood_acoustic": 0.25,
+    "mood_happy": 0.55,
+    "mood_relaxed": 0.45
+  },
+  {
+    "id": "q08",
+    "valence": 0.15,
+    "arousal": 0.4,
+    "danceability": 0.85,
+    "mood_acoustic": 0.6,
+    "mood_happy": 0.2,
+    "mood_relaxed": 0.3
+  },
+  {
+    "id": "q09",
+    "valence": 0.85,
+    "arousal": 0.6,
+    "danceability": 0.15,
+    "mood_acoustic": 0.4,
+    "mood_happy": 0.8,
+    "mood_relaxed": 0.7
+  },
+  {
+    "id": "q10",
+    "valence": 0.3,
+    "arousal": 0.3,
+    "danceability": 0.7,
+    "mood_acoustic": 0.7,
+    "mood_happy": 0.3,
+    "mood_relaxed": 0.7
+  },
+  {
+    "id": "q11",
+    "valence": 0.7,
+    "arousal": 0.7,
+    "danceability": 0.3,
+    "mood_acoustic": 0.3,
+    "mood_happy": 0.7,
+    "mood_relaxed": 0.3
+  },
+  {
+    "id": "q12",
+    "valence": 0.05,
+    "arousal": 0.5,
+    "danceability": 0.95,
+    "mood_acoustic": 0.5,
+    "mood_happy": 0.05,
+    "mood_relaxed": 0.95
+  }
+]
