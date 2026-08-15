@@ -3,6 +3,14 @@ Measured by Baton (Team Manager), 2026-08-14, read-only, against the LOCAL DEV d
 vibe_doctor_development. Not production. n = 321 rows where mood_source LIKE 'essentia%'
 (essentia_itunes 314, essentia_youtube 7). llm_only rows (1) excluded.
 
+> **Population label correction (2026-08-15):**
+> These 321 rows are **one user's personal collection**, not a catalogue sample.
+> In this dev environment there are 5 users, only 1 has a collection, that collection contains all
+> 321 grounded albums, and there are zero grounded albums outside it.
+>
+> Therefore the reported 97.21%/2.79% influence split and 31.9x variance ratio are **n=1 figures**
+> and **MUST NOT** be quoted as population facts.
+
 ## Query used
 
 psql -d vibe_doctor_development -c "
@@ -23,8 +31,8 @@ arousal         0.2747   0.7079   0.4332   0.0870   0.00757     1.9%
 valence         0.3438   0.6739   0.3301   0.0592   0.00350     0.9%
                                                     total 0.39678
 
-The four musicnn heads carry 97.2% of mood distance. The two emomusic heads carry 2.8%.
-danceability outweighs valence by 32x on variance.
+Within this one collection, the four musicnn heads carry 97.2% of mood distance and the two
+emomusic heads carry 2.8%. danceability outweighs valence by 32x on variance.
 
 ## Why
 
