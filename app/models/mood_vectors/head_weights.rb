@@ -7,8 +7,8 @@ module MoodVectors
       arousal: 1.0,
       danceability: 1.0,
       mood_acoustic: 1.0,
-      mood_happy: 1.0,
-      mood_relaxed: 1.0
+      mood_relaxed: 1.0,
+      mood_happy: 1.0
     }.freeze
 
     class << self
@@ -23,6 +23,7 @@ module MoodVectors
       def validate!(weights)
         expected_heads = MoodVector::MOOD_HEADS.to_set
         raise ArgumentError, "head-weights keys must match MoodVector::MOOD_HEADS" unless weights.keys.to_set == expected_heads
+        raise ArgumentError, "head-weights table must be frozen" unless weights.frozen?
 
         weights.each do |head, value|
           unless value.is_a?(Numeric) && value.finite? && value.positive?

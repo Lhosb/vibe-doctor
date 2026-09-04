@@ -2,8 +2,20 @@ require "rails_helper"
 
 RSpec.describe MoodVectors::HeadWeights do
   describe ".validate!" do
+    it "keeps WEIGHTS order aligned with MoodVector::MOOD_HEADS (R6)" do
+      expect(described_class::WEIGHTS.keys).to eq(MoodVector::MOOD_HEADS)
+    end
+
+    it "requires WEIGHTS to be frozen (G3)" do
+      unfrozen = described_class::WEIGHTS.dup
+
+      expect do
+        described_class.validate!(unfrozen)
+      end.to raise_error(ArgumentError, /must be frozen/)
+    end
+
     it "requires exact key set equality with mood heads (G3)" do
-      invalid = described_class::WEIGHTS.except(:mood_relaxed)
+      invalid = described_class::WEIGHTS.except(:mood_relaxed).freeze
 
       expect do
         described_class.validate!(invalid)
@@ -12,15 +24,15 @@ RSpec.describe MoodVectors::HeadWeights do
 
     it "requires finite and positive values (G3)", :aggregate_failures do
       expect do
-        described_class.validate!(described_class::WEIGHTS.merge(valence: -1.0))
+        described_class.validate!(described_class::WEIGHTS.merge(valence: -1.0).freeze)
       end.to raise_error(ArgumentError, /valence/)
 
       expect do
-        described_class.validate!(described_class::WEIGHTS.merge(valence: 0.0))
+        described_class.validate!(described_class::WEIGHTS.merge(valence: 0.0).freeze)
       end.to raise_error(ArgumentError, /valence/)
 
       expect do
-        described_class.validate!(described_class::WEIGHTS.merge(valence: Float::NAN))
+        described_class.validate!(described_class::WEIGHTS.merge(valence: Float::NAN).freeze)
       end.to raise_error(ArgumentError, /valence/)
     end
   end
@@ -45,15 +57,17 @@ RSpec.describe MoodVectors::HeadWeights do
         mood_relaxed: 0.5
       }
 
-      base = normalized_term(described_class::WEIGHTS, deltas)
-      doubled = normalized_term(described_class::WEIGHTS.transform_values { |value| value * 2.0 }, deltas)
+      base = normalized_term_runtime(described_class::WEIGHTS, deltas)
+      doubled = normalized_term_runtime(described_class::WEIGHTS.transform_values { |value| value * 2.0 }.freeze, deltas)
 
       expect(doubled).to be_within(1e-12).of(base)
     end
   end
 
-  def normalized_term(weights, deltas)
-    distance = Math.sqrt(MoodVector::MOOD_HEADS.sum { |head| weights.fetch(head) * deltas.fetch(head)**2 })
-    distance / Math.sqrt(weights.values.sum)
+  def normalized_term_runtime(weights, deltas)
+    stub_const("MoodVectors::HeadWeights::WEIGHTS", weights)
+
+    distance = Math.sqrt(MoodVector::MOOD_HEADS.sum { |head| described_class.for(head) * deltas.fetch(head)**2 })
+    distance / described_class.max_distance
   end
 end
