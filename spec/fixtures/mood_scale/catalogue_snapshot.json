@@ -1,4 +1,17 @@
-[
+{
+  "_provenance": {
+    "dataset_label": "one_user_personal_collection",
+    "notes": "Development fixture captured from one user's grounded album collection; not a catalogue sample.",
+    "database": "vibe_doctor_development",
+    "users_in_development": 5,
+    "users_with_collection": 1,
+    "grounded_albums_in_collection": 321,
+    "grounded_albums_outside_collection": 0,
+    "row_filter": "mood_vectors.mood_source LIKE 'essentia%'",
+    "order_by": "albums.id ASC",
+    "captured_on": "2026-08-15"
+  },
+  "rows": [
   {
     "valence": 0.5234661847,
     "arousal": 0.5092138946,
@@ -2567,4 +2580,5 @@
     "mood_happy": 0.2564936318,
     "mood_relaxed": 0.5855216169
   }
-]
+  ]
+}
