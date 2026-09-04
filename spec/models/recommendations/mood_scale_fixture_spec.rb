@@ -22,11 +22,33 @@ RSpec.describe "Mood-scale fixture integrity" do
     expect(provenance.fetch("grounded_albums_in_collection")).to eq(321)
   end
 
+  it "reads album and query coordinates by head name (G12)" do
+    album_row = JSON.parse(File.read(fixture_path)).fetch("rows").first
+    query_row = JSON.parse(File.read(queries_path)).find { |query| query.fetch("id") == "q02" }
+
+    expect(calibrated_album_coordinate(album_row, :mood_happy))
+      .to eq(album_row.fetch("mood_happy"))
+    expect(query_coordinate(query_row, :mood_happy)).to eq(query_row.fetch("mood_happy"))
+  end
+
   def documented_sha_for(filename)
     baseline = File.read(baseline_path)
     match = baseline.match(/`[^`]*#{Regexp.escape(filename)}` \(SHA-256: `([0-9a-f]{64})`\)/)
     raise "missing SHA for #{filename} in baseline.md" unless match
 
     match[1]
+  end
+
+  def calibrated_album_coordinate(row, head)
+    attributes = MoodVector::MOOD_HEADS.to_h do |mood_head|
+      [ mood_head, row.fetch(mood_head.to_s) ]
+    end
+    mood_vector = Struct.new(*MoodVector::MOOD_HEADS, keyword_init: true).new(**attributes)
+
+    MoodVectors::HeadCalibration.album_coordinate(mood_vector, head)
+  end
+
+  def query_coordinate(row, head)
+    row.fetch(head.to_s)
   end
 end
