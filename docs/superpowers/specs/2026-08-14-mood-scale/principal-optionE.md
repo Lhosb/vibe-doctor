@@ -112,7 +112,7 @@ Five arguments, in order of weight:
 
 ### 1.4 What happens outside the band — **no scoring-time clamp**
 
-**Recommendation: do not clamp the calibrated coordinate.** An album whose raw emomusic falls
+**Empirically required: do not clamp the calibrated coordinate.** An album whose raw emomusic falls
 outside 3.0..7.0 produces a calibrated value slightly below 0 or above 1, and that is correct.
 
 - **Clamping would destroy ordering among exactly the extreme albums the correction exists to
@@ -141,6 +141,27 @@ range and better per-head balance. The band only becomes wrong if production emo
 wide that the correction becomes unnecessary — which is precisely the pre-registered falsifier
 (raw span > 6.0 units). **Nothing about the band choice needs to wait for production data**, and
 §7's instrumentation plus the production query will confirm or refute it after the fact.
+
+### 1.6 Production validation (2026-09-04)
+
+The read-only production query ran against `vibe_doctor_production`: 349 grounded albums across
+two user collections.
+
+- The unit-scale defect generalizes beyond the original one-user development fixture: musicnn
+  accounts for **97.19%** of expected squared distance and emomusic **2.81%**, versus
+  97.21%/2.79% in development. The production danceability:valence variance ratio is **32.49**,
+  versus 31.9 in development. The 97/3 finding is therefore confirmed across two collections;
+  the n=1 caveat still applies to fixture-derived calibration quantities such as §3.4.
+- The falsifier did not fire. The worst per-user emomusic raw span is **3.4658** (user 1,
+  arousal), below the pre-registered 6.0 threshold.
+- Zero production albums fall outside the 3.0..7.0 band.
+- Arousal margins are thin: raw minimum 3.1973 is only **0.1973** above the floor and raw maximum
+  6.6632 is only **0.3368** below the ceiling. This is why no scoring-time clamp is empirically
+  required, not merely preferred: a new extreme must preserve ordering rather than silently
+  saturate.
+- Per-user standard-deviation divergence is at most **9.5%** across the two collections. User 2
+  has only 33 grounded albums, below the plan's hard floor of 50, so per-user statistics remain
+  non-viable.
 
 ---
 
@@ -181,7 +202,7 @@ Arity, sign and key-set checks catch a *malformed* table. They do **not** catch 
 `1.0` on danceability: the key set is intact and the value is a positive float.
 
 **What catches it is gate G6, the no-dominant-head gate.** With `w_danceability = 10.0`,
-danceability's share of mood distance rises to roughly 72 % and the imbalance ratio exceeds 200,
+danceability's share of mood distance rises sharply and the fixture-derived imbalance ratio is 79.87,
 against a ceiling of 12. **The gate that would have caught the original defect is the same gate
 that catches a weight typo** — which is the strongest argument for making it a permanent, running
 gate rather than a one-time check.
@@ -254,6 +275,9 @@ Measured over the frozen 12-query × 321-row fixture, band 3.0..7.0, equal weigh
 | dispersion-matched weight `W = 0.20 × OLD/NEW` | **0.192345** |
 | **residual at the unchanged 0.20** | **+3.98 %** |
 | per-query dispersion ratio at `W = 0.192345` | **[0.9487, 1.0717]** |
+| BEFORE mean / per-query-max ratio (old path against itself) | **1.000000000 / 1.000000000** |
+| AFTER mean ratio at `W = 0.20` | **1.039798885** |
+| AFTER per-query maximum ratio at `W = 0.20` | **1.114364125** *(q11)* |
 | OLD / NEW mean mood term | 0.344698 / 0.352078 |
 
 **Decision: keep `MOOD_VECTOR_WEIGHT = 0.20`, and record `0.192345` and the +3.98 % residual in a
@@ -262,15 +286,50 @@ omission. Rationale: 3.98 % is well inside the uncertainty of a 12-query synthet
 a single user's library, and changing a tuned product constant for a 4 % effect adds churn without
 adding confidence.
 
-**Note how gentle Option E is compared with the withdrawn design.** Its per-query dispersion ratio
-is [0.9487, 1.0717] — a ±7 % band. The probit/z-space design's was [0.65, 1.36]. Option E is very
-nearly blend-neutral, which is a strong independent signal that it changes the *right* thing (which
-head matters) without disturbing the *wrong* thing (mood versus facets).
+**Note how gentle Option E is compared with the withdrawn design.** At the shipped weight its mean
+dispersion rises 3.98% and its worst query rises 11.44%; the dispersion-matched 0.192345 probe
+spans [0.9487, 1.0717]. The probit/z-space design's range was [0.65, 1.36]. Option E changes the
+*right* thing (which head matters) without materially disturbing the *wrong* thing (mood versus
+facets).
 
 **The §4.3 dispersion insight survives intact and is metric-agnostic**: ranking depends on the
 within-query dispersion of `W · mood_term`, not on its mean. The acceptance gate (G7) is
-dispersion-based. The gate band is **[0.95, 1.06]**, which accommodates the +3.98 % residual and
-still fails a ±20 % weight mutation (0.24 → ratio 1.248).
+dispersion-based. The mean-ratio gate band is **[0.95, 1.06]** and the explicit per-query maximum
+is **1.12**. The latter is the smallest round two-decimal ceiling above the fixture-derived
+1.114364125. A 0.24 weight mutation raises the mean ratio to about 1.248 and fails.
+
+The values and maximum bound were generated through the shipped `MoodDistance` path with:
+
+```bash
+bin/rails runner - <<'RUBY'
+require "json"
+root = Rails.root.join("spec/fixtures/mood_scale")
+rows = JSON.parse(File.read(root.join("catalogue_snapshot.json"))).fetch("rows")
+queries = JSON.parse(File.read(root.join("queries.json")))
+vector = ->(row, source) {
+  attributes = MoodVector::MOOD_HEADS.to_h { |head| [head, row.fetch(head.to_s)] }
+  MoodVector.new(**attributes, mood_source: source)
+}
+albums = rows.map { |row| vector.call(row, "essentia_itunes") }
+old_sds = []
+new_sds = []
+queries.each do |row|
+  query = vector.call(row, "llm_only")
+  old_terms = albums.map do |album|
+    sum = MoodVector::MOOD_HEADS.sum { |head| (album.public_send(head) - query.public_send(head))**2 }
+    Math.sqrt(sum) / Math.sqrt(MoodVector::MOOD_HEADS.size)
+  end
+  new_terms = albums.map { |album| MoodVectors::MoodDistance.term(album_mood: album, query_mood: query) }
+  sd = ->(values) { mean = values.sum / values.size; Math.sqrt(values.sum { |value| (value - mean)**2 } / values.size) }
+  old_sds << sd.call(old_terms)
+  new_sds << sd.call(new_terms)
+end
+ratios = new_sds.zip(old_sds).map { |new_sd, old_sd| new_sd / old_sd }
+puts({old_mean: old_sds.sum / old_sds.size, new_mean: new_sds.sum / new_sds.size,
+      mean_ratio: new_sds.sum / old_sds.sum, max_ratio: ratios.max,
+      max_query: queries.fetch(ratios.index(ratios.max)).fetch("id")})
+RUBY
+```
 
 ---
 
@@ -334,8 +393,8 @@ gate" failure and is not acceptable.
 | **G3** | `HeadWeights`: key set **equals** `MoodVector::MOOD_HEADS` as a set; all values finite and positive; hash frozen | drop `:mood_relaxed`; set `:valence` to `-1.0`; set one to `0.0` |
 | **G4** | **scale invariance / live derivation**: doubling every weight leaves the mood term unchanged to 1e-12 | hardcode `max_distance` as `Math.sqrt(6)` → the term moves, fails |
 | **G5** | `MoodVector.const_defined?(:MAX_DISTANCE)` is false; `MoodVector.method_defined?(:distance_to)` is false | re-add either |
-| **G6** | **no head silently dominates** — *the gate that would have caught the original defect.* Over the fixture, per-head share of total mood distance; **imbalance (max/min) ≤ 12**. **Failing control:** the same computation with the declared 1.0..9.0 band **must produce 31.95 and fail**. **Passing control:** Option E **must produce 7.99 and pass** | set `w_danceability = 10.0` (imbalance > 200); revert the band to 1..9 |
-| **G7** | **dispersion calibration.** Re-derive the OLD sd from the fixture using the old formula written out explicitly, assert `== 0.095101457` to 9 dp; compute the NEW sd through the shipped path; assert ratio ∈ **[0.95, 1.06]**. **Non-vacuity floor asserted first: 321 fixture rows, 12 queries, 12 non-zero sds** | `MOOD_VECTOR_WEIGHT` → 0.24 (ratio 1.248); band → 1..9 |
+| **G6** | **no head silently dominates** — *the gate that would have caught the original defect.* Over the fixture, per-head share of total mood distance; **imbalance (max/min) ≤ 12**. **Failing control:** the same computation with the declared 1.0..9.0 band **must produce 31.95 and fail**. **Passing control:** Option E **must produce 7.99 and pass** | set `w_danceability = 10.0` (fixture-derived imbalance 79.87); revert the band to 1..9 |
+| **G7** | **dispersion calibration.** Re-derive the OLD sd from the fixture using the old formula written out explicitly, assert `== 0.095101457` to 9 dp; compute the NEW sd through the shipped path; assert mean ratio ∈ **[0.95, 1.06]** and the per-query maximum ratio ≤ **1.12**. **Non-vacuity floor asserted first: 321 fixture rows, 12 queries, 12 non-zero sds** | `MOOD_VECTOR_WEIGHT` → 0.24 (mean ratio 1.248, maximum ratio 1.337) |
 | **G8** | **reachability**: calibrated album arousal max over the fixture **≥ 0.85** (Option E gives 0.916; today's band gives 0.708) | revert the band to 1..9 → 0.708, fails |
 | **G9** | **mood is the sole discriminator**: two albums, identical embeddings, differing moods; the mood-preferred one ranks first **and** the score gap equals the hand-computed `W · (term_a − term_b)` to 1e-9 | `MOOD_VECTOR_WEIGHT` → 0 |
 | **G10** | **neutral preservation**: stored 0.5 on every head → calibrated 0.5 on every head (§1.3 argument 1) | band → 3.2..6.7 → valence yields 0.5143, fails |
@@ -447,17 +506,14 @@ measurement units, and we have handed the remaining balance to you as six number
 have not made every listener's library behave identically, and we cannot without per-listener
 statistics — which need collections we do not have and, for new or small libraries, cannot have.*
 
-**What the production query is still worth running for**, even though it no longer gates the design:
+**What the production query established on 2026-09-04**, without changing the design:
 
-1. **The falsifier.** Per-user emomusic raw min/max. Any real collection with a span > 6.0 units
-   falsifies the finding that opened this ticket, and Layer 1's *premise* — not just its band —
-   would need rethinking. **Bring that back to me if it appears.**
-2. **Band validation with real margin.** Real album-mean extremes from other users tell us whether
-   3.0..7.0 has the headroom I claim. Under a no-clamp design a breach is not a failure, but it is
-   information about how far the band should sit.
-3. **Informing Layer 2.** If per-user spreads turn out to track each other, the owner can set the
-   six weights with evidence rather than by taste — the correct way to spend a PASS (re-review
-   §13.1): a one-time human input, never a live constant.
+1. **The falsifier did not fire.** The worst raw emomusic span is 3.4658, below 6.0.
+2. **The band has positive but thin margin.** No albums fall outside 3.0..7.0, while arousal sits
+   only 0.1973 above the floor and 0.3368 below the ceiling. No-clamp therefore remains required.
+3. **Per-user statistics remain non-viable.** The two collections differ by at most 9.5% in
+   per-head standard deviation, but the second has only 33 grounded albums, below the hard floor
+   of 50.
 
 **None of these block anything.** That is the property Option E was chosen for.
 
@@ -549,7 +605,7 @@ The reviewers also added a gate beyond the original plan — `head_weights_spec.
 order aligned with `MoodVector::MOOD_HEADS`" — which addresses the head-order hazard from the
 step-4 review. Good addition; keep it.
 
-### 11.2 NEW — provisional G12, binding rule, and named-data G13
+### 11.2 NEW — binding G12 and named-data G13
 
 **These are the two forms of one substantive gap re-reading the built artifacts exposed.**
 
@@ -568,17 +624,15 @@ produced six times.
 
 | id | gate | mutation that must make it fail |
 |---|---|---|
-| **G12 (provisional until step 4)** | **album fixture reads are key-addressed.** Load one fixture row whose `mood_happy` and `mood_relaxed` differ materially, run the constructed album vector through `HeadCalibration`, and assert the calibrated coordinate for `mood_happy` equals the value stored under the `"mood_happy"` **key** — not the value in that position. There is no query-side assertion yet because no non-tautological query fixture reader exists before step 4. | change the album fixture read to `row.values` or `values_at` → the assertion must fail. Reordering JSON keys while leaving values attached to their keys is intentionally a passing control: key-addressed reads must be order-independent. |
-| **G13** | **fixture keys are paired with the correct values.** Derive `mood_happy` and `mood_relaxed` population standard deviations from the album fixture and compare them with the independently recorded named anchors in `baseline.md`; compare q02's two named query coordinates with the baseline query table. | swap the values assigned to the `mood_happy` and `mood_relaxed` keys, update the fixture SHA so G11 passes, and assert G13 fails |
+| **G12** | **album fixture reads are key-addressed.** Load one fixture row whose `mood_happy` and `mood_relaxed` differ materially through the shared test-support reader, run the constructed album vector through `HeadCalibration`, and assert the calibrated coordinate for `mood_happy` equals the value stored under the `"mood_happy"` **key** — not the value in that position. There is no standalone query-side assertion because it would be tautological before a production query reader exists; G7 and G9 consume queries through the same shared named-key support reader. | change the shared album fixture read to `row.values` or `values_at` → the assertion must fail. Reordering JSON keys while leaving values attached to their keys is intentionally a passing control: key-addressed reads must be order-independent. |
+| **G13** | **fixture keys are paired with the correct values.** Derive `mood_happy` and `mood_relaxed` population standard deviations from the album fixture and compare them with the independently recorded named anchors in `baseline.md`; compare q02's two named query coordinates with independent named anchors in the same file. | swap the values assigned to the `mood_happy` and `mood_relaxed` keys, update the fixture SHA so G11 passes, and assert G13 fails |
 
 **Construction rule for G6, G7 and G9, to be stated in the specs:** every fixture and query read is
 `fetch("<head name>")`. No positional access to fixture rows anywhere in step 4.
 
-G12 is not binding on step 4 while its fixture-to-vector conversion remains local to its own spec.
-Step 4 must extract one shared **test-support** fixture-to-vector reader and make G6, G7, G9 and
-G12 consume it. Production code must remain fixture-unaware. At that point G12 binds every
-fixture-driven step-4 gate to the same named-key reader instead of certifying a private
-reimplementation.
+G12 is binding in step 4: `spec/support/mood_scale_fixture.rb` is the single shared
+**test-support** fixture-to-vector reader, and G6, G7, G9 and G12 consume it. Production code
+remains fixture-unaware.
 
 ### 11.3 Numeric refinement
 

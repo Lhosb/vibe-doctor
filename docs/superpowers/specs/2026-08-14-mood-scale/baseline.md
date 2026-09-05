@@ -23,6 +23,8 @@ Independent named-column anchors from the original database measurement:
 
 - `mood_happy` population standard deviation: `0.268967`
 - `mood_relaxed` population standard deviation: `0.313610`
+- query `q02` `mood_happy`: `0.30`
+- query `q02` `mood_relaxed`: `0.60`
 
 These anchors and the named query table below detect a fixture regenerated with the two values
 assigned to the wrong keys. They are separate from the fixture SHA, which only detects an
