@@ -1,5 +1,13 @@
 # MOOD-SCALE Baseline Capture (Step 2)
 
+> ## WITHDRAWN DESIGN CONTEXT (2026-08-14)
+>
+> This file preserves measurements from the withdrawn CatalogueScale design. References below to
+> `CatalogueScale`, standardized z-space, and `REFERENCE_DISTANCE` are historical evidence, not
+> current implementation guidance. The replacement is Option E in
+> `docs/superpowers/specs/2026-08-14-mood-scale/principal-optionE.md`; step 4 removed the
+> CatalogueScale class and its legacy metric API.
+
 Date: 2026-08-14
 
 This baseline is captured **before any mood-metric behaviour change**, per sequence step 2 in principal.md.
@@ -83,7 +91,10 @@ Computed over grounded collection **pairwise rows** (`mood_source LIKE 'essentia
 - Pairwise median distance in stored 0..1 space (`d_01`): **0.785407**
 - Pairwise median distance in standardized z-space (`d_z`): **3.021725**
 
-`MoodVectors::CatalogueScale::REFERENCE_DISTANCE` is now pinned to `d_z` (**3.021725**) because principal.md §4.2 defines `REFERENCE_DISTANCE` in standardized recommendation space, not stored 0..1 display space.
+As part of the withdrawn design, `MoodVectors::CatalogueScale::REFERENCE_DISTANCE` was pinned to
+`d_z` (**3.021725**) because principal.md §4.2 defined `REFERENCE_DISTANCE` in standardized
+recommendation space, not stored 0..1 display space. The class no longer exists; this value is
+retained only as a record of that design.
 
 ## SQL used
 

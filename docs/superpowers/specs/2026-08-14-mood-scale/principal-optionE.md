@@ -119,9 +119,12 @@ outside 3.0..7.0 produces a calibrated value slightly below 0 or above 1, and th
   serve** — two albums at raw 2.8 and 2.5 would both become 0.0 and be indistinguishable. Silent
   saturation with no trace is the original complaint that opened this ticket; re-introducing it at
   scoring time would be perverse.
-- **The metric does not require [0, 1].** Only the bound on `MAX_DISTANCE` does, and that becomes a
-  *nominal* normalizer (§2.3). Over the 12-query × 321-row fixture the **maximum mood term is
-  0.755** — the nominal bound of 1.0 is not approached.
+- **The metric does not require [0, 1].** `HeadWeights.max_distance` is a *nominal* normalizer,
+  not a hard cap (§2.3). With validated stored album coordinates at 1.0 and query coordinates at
+  0.0, no-clamp calibration yields a true maximum term of **1.1902380714**, so the 0.20 mood
+  weight permits a maximum contribution of **0.238048**. This 19% overrun is the deliberate
+  counterpart of preserving extreme ordering rather than clamping. Over the 12-query × 321-row
+  fixture the observed maximum term is only **0.755318**.
 - **The margin question largely dissolves once nothing clamps.** Arousal's observed album-mean min
   of 3.1973 sits only 0.197 above a 3.0 floor, which would be uncomfortably thin *if* crossing it
   caused saturation. It does not; it produces a small negative coordinate and correct ordering.
@@ -147,11 +150,17 @@ wide that the correction becomes unnecessary — which is precisely the pre-regi
 The read-only production query ran against `vibe_doctor_production`: 349 grounded albums across
 two user collections.
 
+Production user 1 (n=317) appears to be substantially the same album set as the 321-row
+development fixture, so this section partly **re-measures** rather than independently validates;
+the genuinely new evidence is user 2's 33-album collection.
+
 - The unit-scale defect generalizes beyond the original one-user development fixture: musicnn
   accounts for **97.19%** of expected squared distance and emomusic **2.81%**, versus
   97.21%/2.79% in development. The production danceability:valence variance ratio is **32.49**,
-  versus 31.9 in development. The 97/3 finding is therefore confirmed across two collections;
-  the n=1 caveat still applies to fixture-derived calibration quantities such as §3.4.
+  versus 31.9 in development. The 97/3 finding is reproduced in a second collection, but that
+  collection has only 33 albums and is below the plan's own hard floor of 50; this is supporting
+  evidence, not a population-level confirmation. The n=1 caveat still applies to fixture-derived
+  calibration quantities such as §3.4.
 - The falsifier did not fire. The worst per-user emomusic raw span is **3.4658** (user 1,
   arousal), below the pre-registered 6.0 threshold.
 - Zero production albums fall outside the 3.0..7.0 band.
@@ -201,11 +210,19 @@ quantity that has no effect, while giving false assurance about the quantity tha
 Arity, sign and key-set checks catch a *malformed* table. They do **not** catch `10.0` typed for
 `1.0` on danceability: the key set is intact and the value is a positive float.
 
-**What catches it is gate G6, the no-dominant-head gate.** With `w_danceability = 10.0`,
-danceability's share of mood distance rises sharply and the fixture-derived imbalance ratio is 79.87,
-against a ceiling of 12. **The gate that would have caught the original defect is the same gate
+**What catches it is gate G6, the no-dominant-variance gate.** G6 measures each head's weighted
+share of expected squared album-album separation, which is equivalent to weighted variance share
+because `E[(a-b)²] = 2·Var` and the factor of two cancels. It deliberately excludes fixed-query
+mean offsets and protects the within-query variation that changes ranking. With
+`w_danceability = 10.0`, danceability's share of this variance proxy rises to **77.9%** and the
+fixture-derived imbalance ratio is 79.87 against a ceiling of 12. **The gate that would have caught
+the original defect is the same gate
 that catches a weight typo** — which is the strongest argument for making it a permanent, running
 gate rather than a one-time check.
+
+The earlier claim that this mutation would exceed 200 was algebraically impossible: weights enter
+the squared-distance contribution linearly, so the imbalance scales exactly as
+`10 × 7.987421824 = 79.874218237`. The correction is arithmetic, not a different fixture result.
 
 **Operational rule, and it is load-bearing:** because a Layer 2 change alters relative weights, it
 changes the mood term's dispersion. **Both G6 and the G7 calibration gate must run on every weight
@@ -278,6 +295,7 @@ Measured over the frozen 12-query × 321-row fixture, band 3.0..7.0, equal weigh
 | BEFORE mean / per-query-max ratio (old path against itself) | **1.000000000 / 1.000000000** |
 | AFTER mean ratio at `W = 0.20` | **1.039798885** |
 | AFTER per-query maximum ratio at `W = 0.20` | **1.114364125** *(q11)* |
+| no-clamp theoretical maximum term / contribution at `W = 0.20` | **1.1902380714 / 0.238048** |
 | OLD / NEW mean mood term | 0.344698 / 0.352078 |
 
 **Decision: keep `MOOD_VECTOR_WEIGHT = 0.20`, and record `0.192345` and the +3.98 % residual in a
@@ -393,12 +411,14 @@ gate" failure and is not acceptable.
 | **G3** | `HeadWeights`: key set **equals** `MoodVector::MOOD_HEADS` as a set; all values finite and positive; hash frozen | drop `:mood_relaxed`; set `:valence` to `-1.0`; set one to `0.0` |
 | **G4** | **scale invariance / live derivation**: doubling every weight leaves the mood term unchanged to 1e-12 | hardcode `max_distance` as `Math.sqrt(6)` → the term moves, fails |
 | **G5** | `MoodVector.const_defined?(:MAX_DISTANCE)` is false; `MoodVector.method_defined?(:distance_to)` is false | re-add either |
-| **G6** | **no head silently dominates** — *the gate that would have caught the original defect.* Over the fixture, per-head share of total mood distance; **imbalance (max/min) ≤ 12**. **Failing control:** the same computation with the declared 1.0..9.0 band **must produce 31.95 and fail**. **Passing control:** Option E **must produce 7.99 and pass** | set `w_danceability = 10.0` (fixture-derived imbalance 79.87); revert the band to 1..9 |
+| **G6** | **no head silently dominates ranking variation** — *the gate that would have caught the original defect.* Over the fixture, each head's weighted share of expected squared album-album separation (the variance proxy); **imbalance (max/min) ≤ 12**. **Failing control:** the same computation with the declared 1.0..9.0 band **must produce 31.95 and fail**. **Passing control:** Option E **must produce 7.99 and pass** | set `w_danceability = 10.0` (fixture-derived imbalance 79.87); revert the band to 1..9 |
 | **G7** | **dispersion calibration.** Re-derive the OLD sd from the fixture using the old formula written out explicitly, assert `== 0.095101457` to 9 dp; compute the NEW sd through the shipped path; assert mean ratio ∈ **[0.95, 1.06]** and the per-query maximum ratio ≤ **1.12**. **Non-vacuity floor asserted first: 321 fixture rows, 12 queries, 12 non-zero sds** | `MOOD_VECTOR_WEIGHT` → 0.24 (mean ratio 1.248, maximum ratio 1.337) |
 | **G8** | **reachability**: calibrated album arousal max over the fixture **≥ 0.85** (Option E gives 0.916; today's band gives 0.708) | revert the band to 1..9 → 0.708, fails |
 | **G9** | **mood is the sole discriminator**: two albums, identical embeddings, differing moods; the mood-preferred one ranks first **and** the score gap equals the hand-computed `W · (term_a − term_b)` to 1e-9 | `MOOD_VECTOR_WEIGHT` → 0 |
 | **G10** | **neutral preservation**: stored 0.5 on every head → calibrated 0.5 on every head (§1.3 argument 1) | band → 3.2..6.7 → valence yields 0.5143, fails |
 | **G11** | fixture integrity: SHA-256 matches the value recorded in `baseline.md`; row count 321; query count 12 | edit one row |
+| **G14** | **the shipped metric consumes album-side calibration.** Compare `MoodDistance.term` with an explicit calibrated computation and prove it differs from the raw-album computation on a fixture pair with material emomusic deltas. | change `MoodDistance.term` to read `album_mood.public_send(head)` directly → G14 and G7 fail |
+| **G15** | **the nominal normalizer is not a hard cap.** An all-1.0 stored album against an all-0.0 query produces term 1.1902380714 and contribution 0.238048 at weight 0.20. | clamp the term to 1.0 or describe 0.20 as a hard maximum contribution |
 
 **G6 and G7 are permanent, not one-time.** §2.3: they must run on every Layer 2 weight change.
 
@@ -557,7 +577,8 @@ added to #30's scope.
   calibrated 0.5 and the `llm_only` neutral placeholder stays neutral. The tight band fails that
   and is eliminated on correctness, not taste.
 - **No scoring-time clamp.** Ordering is preserved for the extreme albums the correction exists to
-  serve; max observed mood term is 0.755 against a nominal bound of 1.0.
+  serve. The fixture maximum is 0.755318, while the validated-coordinate theoretical maximum is
+  1.1902380714 and can contribute 0.238048 at weight 0.20; the normalizer is explicitly nominal.
 - **Layer 1 is scoring-time, album-side only. Nothing stored changes → ZERO re-embedding.** The
   mapper-side alternative must be refused: it would cost a migration, a backfill, a full re-embed,
   and a silent break in stored `VibeOverride` semantics.
@@ -565,9 +586,9 @@ added to #30's scope.
   residual +3.98 %, per-query ratio [0.9487, 1.0717]. Option E is very nearly blend-neutral.
 - **`MAX_DISTANCE` returns as `HeadWeights.max_distance` = √(Σwₕ), derived live, never a literal.**
   The sum is deliberately **not** validated — the metric is scale-invariant.
-- **G6 is the gate that would have caught the original defect** (imbalance ≤ 12, failing control
-  31.95, passing control 7.99) **and it is also the typo defence for Layer 2.** With G7 it runs on
-  every weight change, permanently.
+- **G6 is the gate that would have caught the original defect** (variance-proxy imbalance ≤ 12,
+  failing control 31.95, passing control 7.99) **and it is also the typo defence for Layer 2.**
+  With G7 it runs on every weight change, permanently.
 - **Instrumentation is planned, ships separately** as its own migration, and converts the one thing
   Option E deliberately does not control into something we can observe.
 - **Issue #30: my earlier read is corrected.** Option E does *not* dissolve it for emomusic; it

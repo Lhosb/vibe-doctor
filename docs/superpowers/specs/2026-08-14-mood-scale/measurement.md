@@ -36,8 +36,10 @@ emomusic heads carry 2.8%. danceability outweighs valence by 32x on variance.
 
 ## Why
 
-MoodVector#distance_to is unweighted Euclidean, so each head's influence goes as its VARIANCE,
-not its stddev. EssentiaMapper#rescale_emomusic divides by the DECLARED emomusic range (1..9,
+Before Option E step 4, `MoodVector#distance_to` was unweighted Euclidean, so each head's
+influence went as its VARIANCE, not its stddev. Step 4 removed that method and replaced it with
+the calibrated, weighted `MoodVectors::MoodDistance`. `EssentiaMapper#rescale_emomusic` divides
+by the DECLARED emomusic range (1..9,
 EMOMUSIC_RANGE), but the REALIZED range is far narrower. Inverting the rescale, (v*8)+1:
   valence realized  3.75 .. 6.39   out of declared 1..9
   arousal realized  3.20 .. 6.66   out of declared 1..9

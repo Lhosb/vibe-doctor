@@ -2,6 +2,7 @@ module Recommendations
   class CandidateRetrieval
     FACET_WEIGHTS = { sonic: 0.30, situational: 0.25, emotional: 0.15, era: 0.10 }.freeze
     # Fixture dispersion-matched weight is 0.192345; keeping 0.20 leaves a measured +3.98% mean residual.
+    # No-clamp emomusic extremes permit term 1.190238, so the true maximum contribution is 0.238048.
     MOOD_VECTOR_WEIGHT = 0.20
     MAX_FACET_DISTANCE = 1.0
     PER_FACET_POOL_SIZE = 100
