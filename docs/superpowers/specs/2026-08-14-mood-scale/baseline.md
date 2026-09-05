@@ -19,6 +19,15 @@ Committed fixture files for permanent gates now live at:
 - `spec/fixtures/mood_scale/catalogue_snapshot.json` (SHA-256: `34257e1c89abefbbbdaa4c8de0ab6dc37a21f02ada09bc022bbbf3a4124b6428`)
 - `spec/fixtures/mood_scale/queries.json` (SHA-256: `f686686ebb75b2c9ea78673f824e9ee705f9de3a4393ce1fc5cf21684353b5f1`)
 
+Independent named-column anchors from the original database measurement:
+
+- `mood_happy` population standard deviation: `0.268967`
+- `mood_relaxed` population standard deviation: `0.313610`
+
+These anchors and the named query table below detect a fixture regenerated with the two values
+assigned to the wrong keys. They are separate from the fixture SHA, which only detects an
+unacknowledged byte change.
+
 Step-4/G7 pinned baseline value (for dispersion-ratio calibration): `sd_old = 0.095101457`.
 
 Fixture-generating command (one-user collection corpus):

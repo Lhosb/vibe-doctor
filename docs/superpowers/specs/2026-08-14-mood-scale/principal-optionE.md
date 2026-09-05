@@ -23,7 +23,7 @@ Nothing in them was rewritten from memory.
 | **RE-VERIFIED against sources after recovery** — re-derived on 2026-08-15 from the committed fixture and the built code, not taken on trust | every numeric claim in §1.2, §1.4, §3.4 and the G1/G2/G8/G10 gate values; see §11.1 |
 | **RECONSTRUCTED** | nothing. No section was rebuilt. |
 | **REMEMBERED but not re-derived** | nothing in §§0–10. The two figures I could not re-check from a surviving source are named explicitly in §11.4. |
-| **NEW since the original plan** | §11 only — one added gate (**G12**), one numeric refinement, and the post-recovery verification record |
+| **NEW since the original plan** | §11 only — two added gates (**G12** and **G13**), one numeric refinement, and the post-recovery verification record |
 
 This file is now **in the repository**, which is where it should have been from the start.
 
@@ -343,8 +343,8 @@ gate" failure and is not acceptable.
 
 **G6 and G7 are permanent, not one-time.** §2.3: they must run on every Layer 2 weight change.
 
-**A twelfth gate, G12, was added after recovery — see §11.2.** It closes a positional-read hazard
-between the fixture's key order and `MoodVector::MOOD_HEADS` that **none of G1–G11 would catch**.
+**Two gates, G12 and G13, were added after recovery — see §11.2.** They separately cover
+positional-read and mis-keyed-data hazards that **none of G1–G11 would catch**.
 
 ### 5.1 The fixture
 
@@ -549,9 +549,9 @@ The reviewers also added a gate beyond the original plan — `head_weights_spec.
 order aligned with `MoodVector::MOOD_HEADS`" — which addresses the head-order hazard from the
 step-4 review. Good addition; keep it.
 
-### 11.2 NEW — G12, and why the existing gates would not catch what it catches
+### 11.2 NEW — provisional G12, binding rule, and named-data G13
 
-**This is the one substantive gap re-reading the built artifacts exposed.**
+**These are the two forms of one substantive gap re-reading the built artifacts exposed.**
 
 The fixture files order their keys `valence, arousal, danceability, mood_acoustic, mood_happy,
 mood_relaxed`. `MoodVector::MOOD_HEADS` orders them `… mood_acoustic, mood_relaxed, mood_happy`.
@@ -568,10 +568,17 @@ produced six times.
 
 | id | gate | mutation that must make it fail |
 |---|---|---|
-| **G12** | **fixture reads are key-addressed.** Load one fixture row whose `mood_happy` and `mood_relaxed` differ materially, run it through the shipped path, and assert the calibrated coordinate for `mood_happy` equals the value stored under the `"mood_happy"` **key** — not the value in that position. Assert the same for a query vector. | change the fixture read to `row.values` (or `values_at`), or transpose the last two entries of the fixture's key order → the assertion must fail |
+| **G12 (provisional until step 4)** | **album fixture reads are key-addressed.** Load one fixture row whose `mood_happy` and `mood_relaxed` differ materially, run the constructed album vector through `HeadCalibration`, and assert the calibrated coordinate for `mood_happy` equals the value stored under the `"mood_happy"` **key** — not the value in that position. There is no query-side assertion yet because no non-tautological query fixture reader exists before step 4. | change the album fixture read to `row.values` or `values_at` → the assertion must fail. Reordering JSON keys while leaving values attached to their keys is intentionally a passing control: key-addressed reads must be order-independent. |
+| **G13** | **fixture keys are paired with the correct values.** Derive `mood_happy` and `mood_relaxed` population standard deviations from the album fixture and compare them with the independently recorded named anchors in `baseline.md`; compare q02's two named query coordinates with the baseline query table. | swap the values assigned to the `mood_happy` and `mood_relaxed` keys, update the fixture SHA so G11 passes, and assert G13 fails |
 
 **Construction rule for G6, G7 and G9, to be stated in the specs:** every fixture and query read is
 `fetch("<head name>")`. No positional access to fixture rows anywhere in step 4.
+
+G12 is not binding on step 4 while its fixture-to-vector conversion remains local to its own spec.
+Step 4 must extract one shared **test-support** fixture-to-vector reader and make G6, G7, G9 and
+G12 consume it. Production code must remain fixture-unaware. At that point G12 binds every
+fixture-driven step-4 gate to the same named-key reader instead of certifying a private
+reimplementation.
 
 ### 11.3 Numeric refinement
 

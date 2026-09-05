@@ -22,13 +22,23 @@ RSpec.describe "Mood-scale fixture integrity" do
     expect(provenance.fetch("grounded_albums_in_collection")).to eq(321)
   end
 
-  it "reads album and query coordinates by head name (G12)" do
+  it "provisionally reads album coordinates by head name (G12)" do
     album_row = JSON.parse(File.read(fixture_path)).fetch("rows").first
-    query_row = JSON.parse(File.read(queries_path)).find { |query| query.fetch("id") == "q02" }
 
     expect(calibrated_album_coordinate(album_row, :mood_happy))
       .to eq(album_row.fetch("mood_happy"))
-    expect(query_coordinate(query_row, :mood_happy)).to eq(query_row.fetch("mood_happy"))
+  end
+
+  it "pins happy and relaxed fixture values to independent named anchors (G13)", :aggregate_failures do
+    rows = JSON.parse(File.read(fixture_path)).fetch("rows")
+    query = JSON.parse(File.read(queries_path)).find { |candidate| candidate.fetch("id") == "q02" }
+    documented_query = documented_query_coordinates("q02")
+
+    %w[mood_happy mood_relaxed].each do |head|
+      expect(population_standard_deviation(rows, head))
+        .to be_within(5e-7).of(documented_population_standard_deviation(head))
+      expect(query.fetch(head)).to eq(documented_query.fetch(head))
+    end
   end
 
   def documented_sha_for(filename)
@@ -48,7 +58,26 @@ RSpec.describe "Mood-scale fixture integrity" do
     MoodVectors::HeadCalibration.album_coordinate(mood_vector, head)
   end
 
-  def query_coordinate(row, head)
-    row.fetch(head.to_s)
+  def documented_population_standard_deviation(head)
+    baseline = File.read(baseline_path)
+    match = baseline.match(/`#{Regexp.escape(head)}` population standard deviation: `([0-9.]+)`/)
+    raise "missing population standard deviation for #{head} in baseline.md" unless match
+
+    match[1].to_f
+  end
+
+  def documented_query_coordinates(query_id)
+    rows = File.readlines(baseline_path).grep(/^\|/)
+    headers = rows.find { |line| line.start_with?("| id |") }.split("|").map(&:strip).reject(&:empty?)
+    values = rows.find { |line| line.start_with?("| #{query_id} |") }.split("|").map(&:strip).reject(&:empty?)
+
+    headers.zip(values).to_h.transform_values { |value| Float(value, exception: false) || value }
+  end
+
+  def population_standard_deviation(rows, head)
+    values = rows.map { |row| row.fetch(head) }
+    mean = values.sum / values.size
+
+    Math.sqrt(values.sum { |value| (value - mean)**2 } / values.size)
   end
 end
