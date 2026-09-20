@@ -8,8 +8,8 @@
 > (`pipeline.rb:53-55` into `candidate_retrieval.rb:34`), and the constants cited here were
 > measured on **one user collection** (n=1 in the dimension that matters for ranking).
 >
-> Replacement direction: **Option E**, documented in `principal-rereview.md`
-> (`docs/superpowers/specs/2026-08-14-mood-scale/principal-rereview.md`).
+> Replacement: **Option E**, specified in
+> `docs/superpowers/specs/2026-08-14-mood-scale/principal-optionE.md`.
 >
 **Author:** Keystone (Principal Engineer)
 **Date:** 2026-08-14

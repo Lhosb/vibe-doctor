@@ -61,4 +61,44 @@ RSpec.describe Recommendations::CandidateRetrieval do
 
     expect(candidates).to eq([])
   end
+
+  it "uses mood as the sole discriminator and preserves its exact score gap (G9)" do
+    query_row = mood_scale_query_rows.find { |row| row.fetch("id") == "q02" }
+    query_mood = mood_vector_from_fixture(query_row, mood_source: "llm_only")
+    scoped_understanding = instance_double(
+      QueryUnderstandingCache,
+      embedding: Array.new(1536, 0.1),
+      mood_vector: query_mood
+    )
+    preferred_album = create_fixture_album(mood_scale_album_rows.fetch(0))
+    other_album = create_fixture_album(mood_scale_album_rows.fetch(1))
+
+    candidates = described_class.new(
+      scoped_understanding,
+      limit: 2,
+      album_ids: [ preferred_album.id, other_album.id ]
+    ).call
+
+    preferred_term = MoodVectors::MoodDistance.term(album_mood: preferred_album.mood_vector, query_mood:)
+    other_term = MoodVectors::MoodDistance.term(album_mood: other_album.mood_vector, query_mood:)
+    expected_gap = 0.20 * (other_term - preferred_term)
+
+    expect(candidates.map(&:album)).to eq([ preferred_album, other_album ])
+    expect(candidates.last.blended_score - candidates.first.blended_score).to be_within(1e-9).of(expected_gap)
+  end
+
+  def create_fixture_album(row)
+    album = create(:album, :grounded)
+    mood_vector_from_fixture(row, mood_source: "essentia_itunes", album:).save!
+    create(
+      :embedding,
+      album:,
+      sonic: Array.new(1536, 0.2),
+      emotional: Array.new(1536, 0.2),
+      situational: Array.new(1536, 0.2),
+      era: Array.new(1536, 0.2)
+    )
+
+    album
+  end
 end
