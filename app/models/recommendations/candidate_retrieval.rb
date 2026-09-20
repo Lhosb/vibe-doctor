@@ -28,7 +28,6 @@ module Recommendations
       candidates = candidate_ids.map do |id|
         Candidate.new(album: albums.fetch(id), blended_score: blended_score(id, maps, albums.fetch(id)))
       end
-      head_shares # Memoize instrumentation before returning the limited candidate set.
 
       candidates
         .sort_by(&:blended_score)
@@ -38,13 +37,15 @@ module Recommendations
     def head_shares
       raise "no candidates were scored" if @scored_count.zero?
 
-      total_weighted_sq_distance = @head_totals.values.sum
-      @head_shares ||= {
-        "shares" => normalized_head_shares(total_weighted_sq_distance:),
-        "max_term" => @max_term,
-        "scored_count" => @scored_count,
-        "total_weighted_sq_distance" => total_weighted_sq_distance
-      }
+      @head_shares ||= begin
+        total_weighted_sq_distance = @head_totals.values.sum
+        {
+          "shares" => normalized_head_shares(total_weighted_sq_distance:),
+          "max_term" => @max_term,
+          "scored_count" => @scored_count,
+          "total_weighted_sq_distance" => total_weighted_sq_distance
+        }
+      end
     end
 
     private
