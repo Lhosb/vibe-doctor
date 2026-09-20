@@ -24,6 +24,7 @@ RSpec.describe "Mood-scale fixture integrity" do
     album_row = mood_scale_album_rows.first
     album_mood = mood_vector_from_fixture(album_row, mood_source: "essentia_itunes")
 
+    expect(mood_scale_album_rows.none? { |row| row.fetch("mood_happy") == row.fetch("mood_relaxed") }).to be(true)
     expect(MoodVectors::HeadCalibration.album_coordinate(album_mood, :mood_happy))
       .to eq(album_row.fetch("mood_happy"))
   end

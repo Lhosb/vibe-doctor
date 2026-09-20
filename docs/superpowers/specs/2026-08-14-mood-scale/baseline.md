@@ -38,7 +38,15 @@ These anchors and the named query table below detect a fixture regenerated with 
 assigned to the wrong keys. They are separate from the fixture SHA, which only detects an
 unacknowledged byte change.
 
-Step-4/G7 pinned baseline value (for dispersion-ratio calibration): `sd_old = 0.095101457`.
+Step-4/G7 pinned baseline values (for dispersion-ratio calibration):
+
+- `sd_old = 0.095101457`
+- `mean_ratio = 1.039798885`
+- `max_ratio = 1.114364125`
+
+G12 load-bearing fixture invariant: no row may have exactly equal `mood_happy` and `mood_relaxed`
+values. Regeneration must preserve this property so a positional head read cannot pass G12 by
+coincidental equality.
 
 Fixture-generating command (one-user collection corpus):
 

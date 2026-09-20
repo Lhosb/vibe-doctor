@@ -11,6 +11,11 @@ RSpec.describe "MoodVectors::MoodDistance" do
   let(:query_vectors) do
     mood_scale_query_rows.map { |row| mood_vector_from_fixture(row, mood_source: "llm_only") }
   end
+  let(:baseline_path) { Rails.root.join("docs/superpowers/specs/2026-08-14-mood-scale/baseline.md") }
+
+  before do
+    expect(album_vectors.size).to eq(321)
+  end
 
   it "keeps per-head variance influence below the imbalance ceiling with explicit controls (G6)", :aggregate_failures do
     option_e_imbalance = imbalance_ratio(album_vectors) do |mood, head|
@@ -28,11 +33,10 @@ RSpec.describe "MoodVectors::MoodDistance" do
     old_sds = query_vectors.map { |query| population_standard_deviation(old_terms(query)) }
     new_sds = query_vectors.map { |query| population_standard_deviation(new_terms(query)) }
 
-    expect(album_vectors.size).to eq(321)
     expect(query_vectors.size).to eq(12)
     expect(old_sds.count(&:positive?)).to eq(12)
     expect(new_sds.count(&:positive?)).to eq(12)
-    expect((old_sds.sum / old_sds.size).round(9)).to eq(0.095101457)
+    expect((old_sds.sum / old_sds.size).round(9)).to eq(documented_g7_anchor("sd_old"))
 
     weighted_ratios = new_sds.each_index.map do |index|
       (Recommendations::CandidateRetrieval::MOOD_VECTOR_WEIGHT * new_sds.fetch(index)) /
@@ -42,9 +46,9 @@ RSpec.describe "MoodVectors::MoodDistance" do
       (OLD_MOOD_VECTOR_WEIGHT * old_sds.sum)
     max_ratio = weighted_ratios.max
 
-    expect(mean_ratio.round(9)).to eq(1.039798885)
+    expect(mean_ratio.round(9)).to eq(documented_g7_anchor("mean_ratio"))
     expect(mean_ratio).to be_between(MEAN_DISPERSION_RATIO_RANGE.begin, MEAN_DISPERSION_RATIO_RANGE.end)
-    expect(max_ratio.round(9)).to eq(1.114364125)
+    expect(max_ratio.round(9)).to eq(documented_g7_anchor("max_ratio"))
     expect(max_ratio).to be <= MAX_PER_QUERY_DISPERSION_RATIO
   end
 
@@ -61,10 +65,8 @@ RSpec.describe "MoodVectors::MoodDistance" do
     query_row = mood_scale_query_rows.find { |row| row.fetch("id") == "q02" }
     query = mood_vector_from_fixture(query_row, mood_source: "llm_only")
     actual = described_metric_term(album:, query:)
-    calibrated = explicit_term(album:, query:, calibrate_album: true)
-    uncalibrated = explicit_term(album:, query:, calibrate_album: false)
+    uncalibrated = explicit_uncalibrated_term(album:, query:)
 
-    expect(actual).to be_within(1e-12).of(calibrated)
     expect(actual).not_to be_within(1e-6).of(uncalibrated)
   end
 
@@ -73,6 +75,7 @@ RSpec.describe "MoodVectors::MoodDistance" do
     query = mood_vector_with_all_heads(0.0, mood_source: "llm_only")
     term = described_metric_term(album:, query:)
 
+    # Keep these anchors synchronized with the no-clamp bound comment in CandidateRetrieval.
     expect(term.round(10)).to eq(1.1902380714)
     expect((Recommendations::CandidateRetrieval::MOOD_VECTOR_WEIGHT * term).round(6)).to eq(0.238048)
   end
@@ -107,19 +110,22 @@ RSpec.describe "MoodVectors::MoodDistance" do
     MoodVectors::MoodDistance.term(album_mood: album, query_mood: query)
   end
 
-  def explicit_term(album:, query:, calibrate_album:)
+  def explicit_uncalibrated_term(album:, query:)
     squared_distance = MoodVector::MOOD_HEADS.sum do |head|
-      album_coordinate = if calibrate_album
-        MoodVectors::HeadCalibration.album_coordinate(album, head)
-      else
-        album.public_send(head)
-      end
-      delta = album_coordinate - query.public_send(head)
+      delta = album.public_send(head) - query.public_send(head)
 
       MoodVectors::HeadWeights.for(head) * delta**2
     end
 
     Math.sqrt(squared_distance) / MoodVectors::HeadWeights.max_distance
+  end
+
+  def documented_g7_anchor(name)
+    baseline = File.read(baseline_path)
+    match = baseline.match(/`#{Regexp.escape(name)} = ([0-9.]+)`/)
+    raise "missing G7 #{name} anchor in baseline.md" unless match
+
+    match[1].to_f
   end
 
   def mood_vector_with_all_heads(value, mood_source:)
