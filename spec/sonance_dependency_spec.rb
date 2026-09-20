@@ -6,6 +6,8 @@ RSpec.describe "sonance dependency" do
   it "loads the v0.4.0 release commit" do
     lockfile = Pathname(__dir__).join("../Gemfile.lock").read
     gem_path = Gem.loaded_specs.fetch("sonance").full_gem_path
+    # This resolves the release commit. Gemfile.lock records the annotated tag object's SHA,
+    # so do not compare this value with its revision line.
     revision, status = Open3.capture2("git", "-C", gem_path, "rev-parse", "HEAD")
 
     expect(Sonance::VERSION).to eq("0.4.0")
