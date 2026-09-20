@@ -76,8 +76,25 @@ RSpec.describe "MoodVectors::MoodDistance" do
     term = described_metric_term(album:, query:)
 
     # Keep these anchors synchronized with the no-clamp bound comment in CandidateRetrieval.
-    expect(term.round(10)).to eq(1.1902380714)
+    expect(term.round(10)).to eq(MoodScaleFixture::G15_MAX_TERM)
     expect((Recommendations::CandidateRetrieval::MOOD_VECTOR_WEIGHT * term).round(6)).to eq(0.238048)
+  end
+
+  it "derives the term from the same per-head computation exposed by the breakdown (G16)", :aggregate_failures do
+    expect(album_vectors.size).to eq(321)
+    expect(query_vectors.size).to eq(12)
+
+    sample = MoodVectors::MoodDistance.breakdown(album_mood: album_vectors.first, query_mood: query_vectors.first)
+    expect(sample).to be_frozen
+    expect(sample.per_head).to be_frozen
+
+    album_vectors.product(query_vectors).each do |album, query|
+      breakdown = MoodVectors::MoodDistance.breakdown(album_mood: album, query_mood: query)
+      squared_distance = (breakdown.term * MoodVectors::HeadWeights.max_distance)**2
+
+      expect(breakdown.per_head.values.sum).to be_within(1e-12).of(squared_distance)
+      expect(MoodVectors::MoodDistance.term(album_mood: album, query_mood: query)).to eq(breakdown.term)
+    end
   end
 
   def imbalance_ratio(vectors)

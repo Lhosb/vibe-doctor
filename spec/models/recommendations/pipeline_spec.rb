@@ -3,6 +3,13 @@ require "rails_helper"
 RSpec.describe Recommendations::Pipeline do
   let(:user) { create(:user) }
   let(:album) { create(:album, :grounded, artists: [ "Artist A" ], genres: [ "Jazz" ]) }
+  let(:head_shares) do
+    {
+      "shares" => MoodVector::MOOD_HEADS.to_h { |head| [ head.to_s, 1.0 / MoodVector::MOOD_HEADS.size ] },
+      "max_term" => 0.7,
+      "scored_count" => 12
+    }
+  end
 
   before do
     allow(QueryUnderstandingCache).to receive(:fetch).and_return(
@@ -17,14 +24,18 @@ RSpec.describe Recommendations::Pipeline do
       )
     )
     allow(Recommendations::CandidateRetrieval).to receive(:new).and_return(
-      instance_double(Recommendations::CandidateRetrieval, call: [ Recommendations::CandidateRetrieval::Candidate.new(album: album, blended_score: 0.2) ])
+      instance_double(
+        Recommendations::CandidateRetrieval,
+        call: [ Recommendations::CandidateRetrieval::Candidate.new(album: album, blended_score: 0.2) ],
+        head_shares:
+      )
     )
     allow(RerankClient).to receive(:new).and_return(
       instance_double(RerankClient, rerank: [ { album: album, rerank_score: 0.9, rationale: "warm and mellow" } ])
     )
   end
 
-  it "returns the chosen album, persists a linked event with the pipeline's scores, and records artist cooldown" do
+  it "persists the retrieval's mood instrumentation without recomputing it (G22)" do
     result = described_class.new(user: user, query_text: "warm sunday jazz").call
 
     expect(result.album).to eq(album)
@@ -42,6 +53,9 @@ RSpec.describe Recommendations::Pipeline do
     expect(event.blended_scores).to eq(album.id.to_s => 0.2)
     expect(event.rerank_scores).to eq(album.id.to_s => 0.9)
     expect(event.final_score).to be_within(0.0001).of(1.0 / 1.2)
+    expect(head_shares).not_to be_empty
+    expect(head_shares).not_to eq({})
+    expect(event.mood_head_shares).to eq(head_shares)
 
     expect(ArtistCooldown.penalty_for(user: user, artist_name: "Artist A")).to be > 0.0
   end
@@ -49,7 +63,11 @@ RSpec.describe Recommendations::Pipeline do
   it "records cooldown for every credited artist on a multi-artist album" do
     collab_album = create(:album, :grounded, artists: [ "Artist A", "Artist B" ])
     allow(Recommendations::CandidateRetrieval).to receive(:new).and_return(
-      instance_double(Recommendations::CandidateRetrieval, call: [ Recommendations::CandidateRetrieval::Candidate.new(album: collab_album, blended_score: 0.2) ])
+      instance_double(
+        Recommendations::CandidateRetrieval,
+        call: [ Recommendations::CandidateRetrieval::Candidate.new(album: collab_album, blended_score: 0.2) ],
+        head_shares:
+      )
     )
     allow(RerankClient).to receive(:new).and_return(
       instance_double(RerankClient, rerank: [ { album: collab_album, rerank_score: 0.9, rationale: "warm and mellow" } ])
@@ -62,7 +80,9 @@ RSpec.describe Recommendations::Pipeline do
   end
 
   it "raises NoCandidatesError when admission yields nothing" do
-    allow(Recommendations::CandidateRetrieval).to receive(:new).and_return(instance_double(Recommendations::CandidateRetrieval, call: []))
+    allow(Recommendations::CandidateRetrieval).to receive(:new).and_return(
+      instance_double(Recommendations::CandidateRetrieval, call: [], head_shares:)
+    )
 
     expect { described_class.new(user: user, query_text: "warm sunday jazz").call }
       .to raise_error(Recommendations::Pipeline::NoCandidatesError)

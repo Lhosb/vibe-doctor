@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_001433) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_20_160748) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -132,6 +132,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_001433) do
     t.datetime "created_at", null: false
     t.text "explanation"
     t.float "final_score", null: false
+    t.jsonb "mood_head_shares", default: {}, null: false, comment: "Normalized mood-head shares over all pre-filter scored candidates; scored_count differs from candidates_considered."
     t.string "outcome", default: "pending", null: false
     t.text "query_text", null: false
     t.jsonb "rerank_scores", default: {}, null: false

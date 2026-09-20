@@ -87,6 +87,115 @@ RSpec.describe Recommendations::CandidateRetrieval do
     expect(candidates.last.blended_score - candidates.first.blended_score).to be_within(1e-9).of(expected_gap)
   end
 
+  it "records normalized shares for exactly the six named mood heads (G17)", :aggregate_failures do
+    retrieval = fixture_retrieval(query: query_mood)
+    expected_shares = expected_fixture_shares(query_mood)
+
+    retrieval.call
+    instrumentation = retrieval.head_shares
+    shares = instrumentation.fetch("shares")
+
+    expect(instrumentation.fetch("scored_count")).to eq(321)
+    expect(shares.keys.to_set).to eq(MoodVector::MOOD_HEADS.map(&:to_s).to_set)
+    expect(shares.values).to all(be_between(0.0, 1.0))
+    expect(shares.values.sum).to be_within(1e-12).of(1.0)
+    MoodVector::MOOD_HEADS.each do |head|
+      expect(shares.fetch(head.to_s)).to be_within(1e-12).of(expected_shares.fetch(head.to_s))
+    end
+  end
+
+  it "relates recorded shares to variance shares only at the calibrated fixture mean (G18)", :aggregate_failures do
+    calibrated_coordinates = MoodVector::MOOD_HEADS.to_h do |head|
+      values = mood_scale_album_rows.map do |row|
+        mood = mood_vector_from_fixture(row, mood_source: "essentia_itunes")
+        MoodVectors::HeadCalibration.album_coordinate(mood, head)
+      end
+      [ head, values ]
+    end
+    mean_query = MoodVector.new(
+      **calibrated_coordinates.transform_values { |values| values.sum / values.size },
+      mood_source: "llm_only"
+    )
+    variance_shares = normalized_head_values do |head|
+      population_variance(calibrated_coordinates.fetch(head)) * MoodVectors::HeadWeights.for(head)
+    end
+    mean_retrieval = fixture_retrieval(query: mean_query)
+    off_center_retrieval = fixture_retrieval(query: query_mood)
+
+    mean_retrieval.call
+    off_center_retrieval.call
+    mean_query_shares = mean_retrieval.head_shares.fetch("shares")
+    off_center_shares = off_center_retrieval.head_shares.fetch("shares")
+
+    expect(variance_shares.size).to eq(6)
+    expect(mean_query_shares.size).to eq(6)
+    expect(off_center_shares.size).to eq(6)
+    MoodVector::MOOD_HEADS.each do |head|
+      expect(mean_query_shares.fetch(head.to_s)).to be_within(1e-9).of(variance_shares.fetch(head.to_s))
+    end
+    expect(
+      MoodVector::MOOD_HEADS.sum do |head|
+        (off_center_shares.fetch(head.to_s) - variance_shares.fetch(head.to_s)).abs
+      end
+    ).to be > 0.01
+  end
+
+  it "records every scored candidate before the result limit (G19)" do
+    limit = 1
+    retrieval = described_class.new(understanding, limit:)
+    candidate_ids = retrieval.send(:facet_distance_maps).values.flat_map(&:keys).uniq
+
+    expect(candidate_ids.size).to be > limit
+
+    retrieval.call
+
+    expect(retrieval.head_shares.fetch("scored_count")).to eq(candidate_ids.size)
+  end
+
+  it "records the maximum observed term within the published no-clamp bound (G21)", :aggregate_failures do
+    retrieval = fixture_retrieval(query: query_mood)
+    expected_terms = mood_scale_album_rows.map do |row|
+      MoodVectors::MoodDistance.term(
+        album_mood: mood_vector_from_fixture(row, mood_source: "essentia_itunes"),
+        query_mood:
+      )
+    end
+
+    expect(expected_terms.size).to be > 1
+
+    retrieval.call
+
+    expect(retrieval.head_shares.fetch("max_term")).to eq(expected_terms.max)
+    expect(retrieval.head_shares.fetch("max_term")).to be <= MoodScaleFixture::G15_MAX_TERM
+  end
+
+  it "records six zero shares for a scored candidate at zero mood distance (G23)", :aggregate_failures do
+    centered_mood = MoodVector.new(
+      **MoodVector::MOOD_HEADS.to_h { |head| [ head, 0.5 ] },
+      mood_source: "llm_only"
+    )
+    retrieval = fixture_retrieval(
+      query: centered_mood,
+      album_rows: [ MoodVector::MOOD_HEADS.to_h { |head| [ head.to_s, 0.5 ] } ]
+    )
+    breakdown = MoodVectors::MoodDistance.breakdown(
+      album_mood: mood_vector_from_fixture(
+        MoodVector::MOOD_HEADS.to_h { |head| [ head.to_s, 0.5 ] },
+        mood_source: "essentia_itunes"
+      ),
+      query_mood: centered_mood
+    )
+
+    expect(breakdown.per_head.values.sum).to eq(0.0)
+
+    expect { retrieval.call }.not_to raise_error
+    expect(retrieval.head_shares).to eq(
+      "shares" => MoodVector::MOOD_HEADS.to_h { |head| [ head.to_s, 0.0 ] },
+      "max_term" => 0.0,
+      "scored_count" => 1
+    )
+  end
+
   def create_fixture_album(row)
     album = create(:album, :grounded)
     mood_vector_from_fixture(row, mood_source: "essentia_itunes", album:).save!
@@ -100,5 +209,52 @@ RSpec.describe Recommendations::CandidateRetrieval do
     )
 
     album
+  end
+
+  def fixture_retrieval(query:, album_rows: mood_scale_album_rows)
+    albums = album_rows.each_with_index.map do |row, index|
+      Struct.new(:id, :mood_vector).new(
+        index + 1,
+        mood_vector_from_fixture(row, mood_source: "essentia_itunes")
+      )
+    end
+    album_ids = albums.map(&:id)
+    maps = described_class::FACET_WEIGHTS.each_key.to_h do |facet|
+      [ facet, album_ids.to_h { |album_id| [ album_id, 0.0 ] } ]
+    end
+    relation = double(includes: albums)
+    fixture_understanding = instance_double(
+      QueryUnderstandingCache,
+      embedding: Array.new(1536, 0.1),
+      mood_vector: query
+    )
+    retrieval = described_class.new(fixture_understanding, limit: albums.size)
+
+    allow(retrieval).to receive(:facet_distance_maps).and_return(maps)
+    allow(Album).to receive(:where).with(id: album_ids).and_return(relation)
+
+    retrieval
+  end
+
+  def expected_fixture_shares(query)
+    normalized_head_values do |head|
+      mood_scale_album_rows.sum do |row|
+        album_mood = mood_vector_from_fixture(row, mood_source: "essentia_itunes")
+        MoodVectors::MoodDistance.breakdown(album_mood:, query_mood: query).per_head.fetch(head)
+      end
+    end
+  end
+
+  def normalized_head_values
+    values = MoodVector::MOOD_HEADS.to_h { |head| [ head.to_s, yield(head) ] }
+    total = values.values.sum
+
+    values.transform_values { |value| value / total }
+  end
+
+  def population_variance(values)
+    mean = values.sum / values.size
+
+    values.sum { |value| (value - mean)**2 } / values.size
   end
 end

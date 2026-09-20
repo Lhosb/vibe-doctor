@@ -15,7 +15,8 @@ module Recommendations
 
     def call
       understanding = QueryUnderstandingCache.fetch(@query_text)
-      candidates = CandidateRetrieval.new(understanding, album_ids: user_album_ids).call
+      retrieval = CandidateRetrieval.new(understanding, album_ids: user_album_ids)
+      candidates = retrieval.call
       admitted = GenreAdmissionFilter.new(candidates, requested_genre: @genre).call
       raise NoCandidatesError, "no albums matched the query" if admitted.empty?
 
@@ -23,7 +24,13 @@ module Recommendations
       reranked = RerankClient.new.rerank(query_text: @query_text, ranked_candidates: ranked.first(RERANK_TOP_K))
       chosen = TemperatureSampler.new.sample(scored_items: reranked, temperature: SAMPLE_TEMPERATURE)
 
-      event = persist_event(chosen: chosen, ranked: ranked, reranked: reranked, candidates_considered: admitted.size)
+      event = persist_event(
+        chosen:,
+        ranked:,
+        reranked:,
+        candidates_considered: admitted.size,
+        mood_head_shares: retrieval.head_shares
+      )
       record_cooldown!(chosen[:album])
 
       Result.new(album: chosen[:album], explanation: chosen[:rationale], recommendation_event: event)
@@ -35,7 +42,7 @@ module Recommendations
       album.artists.each { |artist_name| ArtistCooldown.record!(user: @user, artist_name: artist_name) }
     end
 
-    def persist_event(chosen:, ranked:, reranked:, candidates_considered:)
+    def persist_event(chosen:, ranked:, reranked:, candidates_considered:, mood_head_shares:)
       final_score = ranked.find { |r| r.album.id == chosen[:album].id }&.final_score || 0.0
 
       RecommendationEvent.create!(
@@ -45,6 +52,7 @@ module Recommendations
         candidates_considered: candidates_considered,
         blended_scores: ranked.to_h { |r| [ r.album.id.to_s, r.blended_score ] },
         rerank_scores: reranked.to_h { |r| [ r[:album].id.to_s, r[:rerank_score] ] },
+        mood_head_shares:,
         final_score: final_score,
         explanation: chosen[:rationale]
       )
