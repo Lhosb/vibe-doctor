@@ -59,7 +59,7 @@ One file, one statement, no backfill, no index.
 
 `principal-optionE.md` §6 says "six keys" and then also says the column records the max observed
 mood term, which is a seventh value. **That is an inconsistency in my own plan and this is the fix.**
-Rather than eight flat keys mixing measurements with metadata, the column is **three top-level
+Rather than flat keys mixing measurements with metadata, the column is **four top-level
 keys**:
 
 ```jsonc
@@ -72,22 +72,24 @@ keys**:
     "mood_relaxed":  0.2287,
     "mood_happy":    0.1682
   },
-  "max_term":     0.7431,        // float, >= 0.0; nominal bound 1.0, hard bound 1.1902380714
-  "scored_count": 317            // integer, >= 1
+  "max_term":                      0.7431, // float, >= 0.0; nominal bound 1.0, hard bound 1.1902380714
+  "scored_count":                  317,    // integer, >= 1
+  "total_weighted_sq_distance":    184.6   // float, >= 0.0; denominator used for shares
 }
 ```
 
 Nesting the six under `shares` keeps the data/metadata boundary explicit and makes the object
-self-describing to whoever reads it in six months. It also means a later addition (§3.4) is purely
-additive at the top level and cannot be mistaken for a head.
+self-describing to whoever reads it in six months. Additional measurements remain top-level and
+cannot be mistaken for heads.
 
 ### 3.2 Key by key
 
 | key | type | range | meaning |
 |---|---|---|---|
-| `shares.<head>` | float | `0.0 .. 1.0` | that head's fraction of total weighted squared mood distance across the scored candidate set. The six sum to `1.0` (§5). Keys are exactly `MoodVector::MOOD_HEADS`, **by name** — never positional. |
+| `shares.<head>` | float | `0.0 .. 1.0` | that head's fraction of total weighted squared mood distance across the scored candidate set. The six sum to `1.0`, or `total_weighted_sq_distance == 0.0` (§5). Keys are exactly `MoodVector::MOOD_HEADS`, **by name** — never positional. |
 | `max_term` | float | `>= 0.0` | the largest `MoodDistance.term` observed across the scored set. Nominally `<= 1.0`; `1.1902380714` is the hard bound the deliberate no-clamp design permits (pinned by G15). This is how §1.4's nominal bound is *monitored* rather than assumed. |
 | `scored_count` | integer | `>= 1` | how many candidates the shares were computed over. **This is the data's own non-vacuity floor** — shares over 3 albums and shares over 300 are not the same evidence, and nothing else on the row records it (§3.3). |
+| `total_weighted_sq_distance` | float | `>= 0.0` | The denominator the six `shares` were divided by: the sum, over every scored candidate and every head, of `HeadWeights.for(head) * delta**2` — i.e. `Σ_h head_total[h]`. Units are squared calibrated-coordinate units. It is NOT comparable to `max_term`, which is a normalised term in `0..~1`, and NOT to `scored_count`. It is `0.0` only when every scored candidate's calibrated coordinates equal the query exactly. Stored so that aggregation across queries can be either mean-of-shares or share-of-sums; storing shares alone would fix that choice at write time. |
 
 ### 3.3 `scored_count` is not `candidates_considered` — do not conflate them
 
@@ -102,9 +104,9 @@ wrong conclusion. This must be stated in the migration comment, not only here.
 | state | stored value | how it arises |
 |---|---|---|
 | **never instrumented** | `{}` | pre-migration rows, and any future code path that writes an event without a retrieval. Distinguishable from every real value by the absence of `scored_count`. |
-| **instrumented, real data** | all three keys, `scored_count >= 1` | the normal path |
+| **instrumented, real data** | all four keys, `scored_count >= 1` | the normal path |
 | **zero scored candidates** | **unreachable** | `CandidateRetrieval#call:21` returns `[]` when `candidate_ids` is empty, and `pipeline.rb:20` raises `NoCandidatesError` when `admitted` is empty. `persist_event` is therefore never reached with zero candidates. `scored_count == 0` must never appear; **G20 asserts it cannot**, so if it ever does, something upstream changed. |
-| **total squared distance is 0** | six `0.0` shares, `scored_count >= 1` | arithmetically reachable (a single candidate whose calibrated coordinates equal the query exactly). Normalising would divide by zero. Contract: write six zeros. The shares then do **not** sum to 1.0, and that is the signal — it is unambiguous because `scored_count >= 1` distinguishes it from `{}`. |
+| **total squared distance is 0** | six `0.0` shares, `total_weighted_sq_distance == 0.0`, `scored_count >= 1` | arithmetically reachable (a single candidate whose calibrated coordinates equal the query exactly). Normalising would divide by zero. Contract: write six zeros; the explicit zero denominator makes the conditional share invariant self-describing. |
 | **album has no mood vector** | **cannot be recorded — the request raises first** | see §3.5 |
 
 ### 3.5 No mood vector at all — traced, and it is a pre-existing Option E finding
@@ -206,7 +208,9 @@ This is not optional cleanup; it is part of the change.
 
 ## 5. Normalised, not raw — and why
 
-**Normalised to sum to 1.0.** The name says shares; they are shares.
+**Normalised to sum to 1.0 when `total_weighted_sq_distance` is positive.** When it is zero, all six
+shares are `0.0`. The name says shares; they are shares, and the explicit denominator makes the
+invariant unambiguous.
 
 - The question the column exists to answer is *"is per-head influence balanced inside this user's
   collection?"* — inherently a ratio. The existing G6 gate already expresses the same idea as a
@@ -215,9 +219,10 @@ This is not optional cleanup; it is part of the change.
   comparable across queries or users. Any analysis would normalise them anyway; doing it at write
   time means every row is directly comparable and no consumer can forget.
 
-**What normalising loses, and how it is preserved:** magnitude and sample size. Both are kept as
-separate scalars — `max_term` and `scored_count` — rather than smuggled into the shares. That is the
-whole reason those two keys exist, and it should be said in the migration comment.
+**What normalising loses, and how it is preserved:** aggregate magnitude, the maximum observed
+term, and sample size are kept as separate scalars rather than smuggled into the shares.
+`total_weighted_sq_distance` preserves the denominator needed for either mean-of-shares or
+share-of-sums analysis; `max_term` preserves the extreme; `scored_count` preserves sample size.
 
 **A caution for whoever analyses this later, which belongs in the doc:** these shares are *not* the
 same quantity as G6's imbalance. G6 uses per-head **variance across albums**; these use per-head
@@ -238,13 +243,18 @@ numbering runs to G15 (`mood_distance_spec.rb`), so these start at **G16**. Ever
 | id | asserts | non-vacuity floor | mutation that must make it FAIL |
 |---|---|---|---|
 | **G16** | **one computation, two consumers.** Over the 321×12 fixture, `breakdown.per_head.values.sum` equals `(term * HeadWeights.max_distance)**2` within 1e-12 | assert 321 album rows and 12 query rows first | give `term` its own independent sum (e.g. a different weight lookup) → the invariant breaks |
-| **G17** | **shares are shares.** Over the fixture, the six normalised values sum to 1.0 within 1e-12; each is in `0.0..1.0`; the key set equals `MoodVector::MOOD_HEADS` **as a set** | assert `scored_count == 321` before asserting the sum | return raw totals instead of normalised → sum ≠ 1.0; transpose two head keys → key-set/value assertion fails |
+| **G17** | **shares are shares.** Over the fixture, the six normalised values sum to 1.0 within 1e-12; each is in `0.0..1.0`; the key set equals `MoodVector::MOOD_HEADS` **as a set** | assert `scored_count == 321` and `total_weighted_sq_distance > 0` before asserting the sum | return raw totals instead of normalised → sum ≠ 1.0; transpose two head keys → key-set/value assertion fails |
 | **G18** | **shares relate to G6 exactly as claimed.** For a query placed at the per-head **mean of the fixture's calibrated coordinates**, the recorded shares equal G6's variance-based shares within 1e-9 — and for an off-centre query they measurably do **not** | assert both share vectors have six entries and that the off-centre control actually differs | drop the `(mean − q)²` offset reasoning by computing shares from variance instead → the off-centre control stops differing |
 | **G19** | **the scored set is the full scored set.** With a fixture where `candidate_ids.size > @limit`, `scored_count` equals `candidate_ids.size`, not `@limit` | assert `candidate_ids.size > @limit` before comparing — otherwise the gate is trivially satisfied | move accumulation after `.first(@limit)` (`:28`), or into the post-filter set → `scored_count` collapses to 40 |
-| **G20** | **never-instrumented is distinguishable from instrumented.** A row written without a retrieval reads `{}`; an instrumented row carries all three keys with `scored_count >= 1`; `scored_count == 0` never occurs | assert both rows exist in the example | change the column default to a six-zero hash → the two states become indistinguishable |
+| **G20** | **never-instrumented is distinguishable from instrumented.** A row written without a retrieval reads `{}`; an instrumented row carries all four keys with `scored_count >= 1`; `scored_count == 0` never occurs | assert both rows exist in the example | change the column default to a six-zero hash → the two states become indistinguishable |
 | **G21** | **`max_term` is the maximum, and respects the published bound.** Equals the max of the individually computed terms across the scored set, and is `<= 1.1902380714` — **read from the published G15 constant, not recomputed** | assert the scored set has > 1 member, so "max" is not trivially "the only one" | record the last term, or the mean, instead of the max |
 | **G22** | **`Pipeline` persists what `CandidateRetrieval` computed.** With a retrieval stubbed to known shares, the created `RecommendationEvent.mood_head_shares` equals those values exactly | assert the stub's value is non-empty and differs from the column default | have `Pipeline` recompute the shares itself → diverges from the stub |
-| **G23** | **the zero-distance edge case is handled.** A single-candidate run whose calibrated coordinates equal the query yields six `0.0` shares with `scored_count == 1`, and does not raise | assert the total squared distance really is 0 in the example | remove the zero guard → `ZeroDivisionError`/`NaN` |
+| **G23** | **the conditional share invariant handles zero distance.** A single-candidate run whose calibrated coordinates equal the query yields `total_weighted_sq_distance == 0.0`, six `0.0` shares, and `scored_count == 1`; the six shares sum to 1.0 or the total is zero | assert the total squared distance really is 0 in the example | remove the zero guard → `ZeroDivisionError`/`NaN` |
+| **G24** | **non-uniform weights affect the named recorded shares.** Stub six distinct weights and assert the recorded shares equal values predicted directly from that explicit table, without consulting the shipped lookup for expected values | assert all six stubbed weights are distinct and at least two shares differ from the uniform-weight run | transpose two entries in the weight lookup, or delete the multiplication from `MoodDistance.breakdown` → the named shares differ from the predicted values |
+
+G6, G7, G17 and G18 must all be rerun on every Layer 2 weight change. G24 runs on every build so
+weight lookup and multiplication defects are visible even before the first non-uniform production
+weight table ships.
 
 ---
 
@@ -252,7 +262,7 @@ numbering runs to G15 (`mood_distance_spec.rb`), so these start at **G16**. Ever
 
 **Low sensitivity, non-zero, and it needs two explicit decisions rather than a shrug.**
 
-The column holds six floats, one float and one integer. It contains **no** album identifiers, no
+The column holds six share floats, two measurement floats and one integer. It contains **no** album identifiers, no
 titles, no artists, no query text, and no user identifier beyond the `user_id` FK already on the
 row. It is **derived aggregate data over the user's own collection**, so it inherits exactly the
 access controls of the row it sits on.

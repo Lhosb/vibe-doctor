@@ -96,6 +96,7 @@ RSpec.describe Recommendations::CandidateRetrieval do
     shares = instrumentation.fetch("shares")
 
     expect(instrumentation.fetch("scored_count")).to eq(321)
+    expect(instrumentation.fetch("total_weighted_sq_distance")).to be > 0.0
     expect(shares.keys.to_set).to eq(MoodVector::MOOD_HEADS.map(&:to_s).to_set)
     expect(shares.values).to all(be_between(0.0, 1.0))
     expect(shares.values.sum).to be_within(1e-12).of(1.0)
@@ -142,10 +143,11 @@ RSpec.describe Recommendations::CandidateRetrieval do
 
   it "records every scored candidate before the result limit (G19)" do
     limit = 1
+    mood_scale_album_rows.first(4).each { |row| create_fixture_album(row) }
     retrieval = described_class.new(understanding, limit:)
     candidate_ids = retrieval.send(:facet_distance_maps).values.flat_map(&:keys).uniq
 
-    expect(candidate_ids.size).to be > limit
+    expect(candidate_ids.size).to be >= limit + 4
 
     retrieval.call
 
@@ -169,7 +171,7 @@ RSpec.describe Recommendations::CandidateRetrieval do
     expect(retrieval.head_shares.fetch("max_term")).to be <= MoodScaleFixture::G15_MAX_TERM
   end
 
-  it "records six zero shares for a scored candidate at zero mood distance (G23)", :aggregate_failures do
+  it "records the conditional share invariant for a scored candidate at zero mood distance (G23)", :aggregate_failures do
     centered_mood = MoodVector.new(
       **MoodVector::MOOD_HEADS.to_h { |head| [ head, 0.5 ] },
       mood_source: "llm_only"
@@ -189,11 +191,69 @@ RSpec.describe Recommendations::CandidateRetrieval do
     expect(breakdown.per_head.values.sum).to eq(0.0)
 
     expect { retrieval.call }.not_to raise_error
-    expect(retrieval.head_shares).to eq(
+    instrumentation = retrieval.head_shares
+    shares = instrumentation.fetch("shares")
+
+    expect(instrumentation.fetch("total_weighted_sq_distance")).to eq(0.0)
+    expect(instrumentation.fetch("total_weighted_sq_distance").zero? || shares.values.sum == 1.0).to be(true)
+    expect(instrumentation).to eq(
       "shares" => MoodVector::MOOD_HEADS.to_h { |head| [ head.to_s, 0.0 ] },
       "max_term" => 0.0,
-      "scored_count" => 1
+      "scored_count" => 1,
+      "total_weighted_sq_distance" => 0.0
     )
+  end
+
+  it "applies distinct head weights to specifically predicted recorded shares (G24)", :aggregate_failures do
+    album_row = {
+      "valence" => 0.75,
+      "arousal" => 0.75,
+      "danceability" => 1.0,
+      "mood_acoustic" => 1.0,
+      "mood_relaxed" => 1.0,
+      "mood_happy" => 1.0
+    }
+    zero_query = MoodVector.new(
+      **MoodVector::MOOD_HEADS.to_h { |head| [ head, 0.0 ] },
+      mood_source: "llm_only"
+    )
+    uniform_retrieval = fixture_retrieval(query: zero_query, album_rows: [ album_row ])
+    uniform_retrieval.call
+    uniform_shares = uniform_retrieval.head_shares.fetch("shares")
+    distinct_weights = {
+      valence: 1.0,
+      arousal: 2.0,
+      danceability: 3.0,
+      mood_acoustic: 4.0,
+      mood_relaxed: 5.0,
+      mood_happy: 6.0
+    }.freeze
+    expected_shares = {
+      "valence" => 1.0 / 21.0,
+      "arousal" => 2.0 / 21.0,
+      "danceability" => 3.0 / 21.0,
+      "mood_acoustic" => 4.0 / 21.0,
+      "mood_relaxed" => 5.0 / 21.0,
+      "mood_happy" => 6.0 / 21.0
+    }
+
+    expect(distinct_weights.values.uniq.size).to eq(6)
+
+    stub_const("MoodVectors::HeadWeights::WEIGHTS", distinct_weights)
+    weighted_retrieval = fixture_retrieval(query: zero_query, album_rows: [ album_row ])
+    weighted_retrieval.call
+    instrumentation = weighted_retrieval.head_shares
+    weighted_shares = instrumentation.fetch("shares")
+
+    expect(
+      MoodVector::MOOD_HEADS.count do |head|
+        weighted_shares.fetch(head.to_s) != uniform_shares.fetch(head.to_s)
+      end
+    ).to be >= 2
+    expect(instrumentation.fetch("total_weighted_sq_distance")).to eq(21.0)
+    expected_shares.each do |head, expected_share|
+      expect(weighted_shares.fetch(head)).to be_within(1e-12).of(expected_share)
+    end
   end
 
   def create_fixture_album(row)

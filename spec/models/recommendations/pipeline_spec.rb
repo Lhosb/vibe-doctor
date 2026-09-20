@@ -7,7 +7,8 @@ RSpec.describe Recommendations::Pipeline do
     {
       "shares" => MoodVector::MOOD_HEADS.to_h { |head| [ head.to_s, 1.0 / MoodVector::MOOD_HEADS.size ] },
       "max_term" => 0.7,
-      "scored_count" => 12
+      "scored_count" => 12,
+      "total_weighted_sq_distance" => 18.5
     }
   end
 
