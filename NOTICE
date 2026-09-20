@@ -3,17 +3,23 @@ It does not relicense the Essentia model files, which remain under Creative
 Commons Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND
 4.0). It does not relicense Essentia itself, which is distributed under the GNU
 Affero General Public License v3.0. Anyone redistributing or using this
-repository takes on the model and Essentia licences independently of the MIT
-licence that covers the application code.
+repository, or redistributing or using the deployed image built from it, takes
+on the model and Essentia licences independently of the MIT licence that covers
+the application code.
 
   CC BY-NC-ND 4.0: https://creativecommons.org/licenses/by-nc-nd/4.0/
   AGPL-3.0:        https://www.gnu.org/licenses/agpl-3.0.html
+  Apache-2.0:      https://www.apache.org/licenses/LICENSE-2.0
 
 Essentia is invoked as a separate subprocess at runtime; it is not linked into
 the application. The essentia-tensorflow distribution (version 2.1b6.dev1389,
 AGPL-3.0) is installed into the deployed image at /usr/local/essentia-venv.
-This is an architectural fact about how the application works, not a legal
-opinion.
+That distribution bundles libtensorflow
+(/usr/local/essentia-venv/lib/python3.11/site-packages/essentia_tensorflow.libs/libtensorflow-*.so.*),
+which is TensorFlow under Apache-2.0; image recipients therefore take Apache-2.0
+obligations for that bundled TensorFlow component alongside AGPL-3.0 for
+Essentia. This is an architectural fact about how the application works, not a
+legal opinion.
 
 The following six model files were previously redistributed as tracked objects in
 this repository's git history and remain in that history. They are no longer
