@@ -13,6 +13,26 @@ RSpec.describe RecommendationEvent do
     expect(event.reload.rerank_scores).to eq("1" => 0.9)
   end
 
+  it "distinguishes never-instrumented events from populated mood instrumentation (G20)", :aggregate_failures do
+    never_instrumented = create(:recommendation_event)
+    instrumented = create(
+      :recommendation_event,
+      mood_head_shares: {
+        "shares" => MoodVector::MOOD_HEADS.to_h { |head| [ head.to_s, 1.0 / MoodVector::MOOD_HEADS.size ] },
+        "max_term" => 0.7,
+        "scored_count" => 12,
+        "total_weighted_sq_distance" => 18.5
+      }
+    )
+
+    expect([ never_instrumented, instrumented ].size).to eq(2)
+    expect(never_instrumented.reload.mood_head_shares).to eq({})
+    expect(instrumented.reload.mood_head_shares.keys)
+      .to contain_exactly("shares", "max_term", "scored_count", "total_weighted_sq_distance")
+    expect(instrumented.mood_head_shares.fetch("scored_count")).to be >= 1
+    expect([ never_instrumented, instrumented ].none? { |event| event.mood_head_shares["scored_count"] == 0 }).to be(true)
+  end
+
   describe "#apply_outcome!" do
     let(:user) { create(:user) }
     let(:album) { create(:album, :grounded) }

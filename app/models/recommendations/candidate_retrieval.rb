@@ -14,19 +14,38 @@ module Recommendations
       @understanding = understanding
       @limit = limit
       @album_ids = album_ids
+      reset_head_instrumentation!
     end
 
     def call
+      reset_head_instrumentation!
       maps = facet_distance_maps
       candidate_ids = maps.values.flat_map(&:keys).uniq
       return [] if candidate_ids.empty?
 
       albums = Album.where(id: candidate_ids).includes(:mood_vector).index_by(&:id)
 
-      candidate_ids
-        .map { |id| Candidate.new(album: albums.fetch(id), blended_score: blended_score(id, maps, albums.fetch(id))) }
+      candidates = candidate_ids.map do |id|
+        Candidate.new(album: albums.fetch(id), blended_score: blended_score(id, maps, albums.fetch(id)))
+      end
+
+      candidates
         .sort_by(&:blended_score)
         .first(@limit)
+    end
+
+    def head_shares
+      raise "no candidates were scored" if @scored_count.zero?
+
+      @head_shares ||= begin
+        total_weighted_sq_distance = @head_totals.values.sum
+        {
+          "shares" => normalized_head_shares(total_weighted_sq_distance:),
+          "max_term" => @max_term,
+          "scored_count" => @scored_count,
+          "total_weighted_sq_distance" => total_weighted_sq_distance
+        }
+      end
     end
 
     private
@@ -41,11 +60,39 @@ module Recommendations
 
     def blended_score(album_id, maps, album)
       facet_distance = FACET_WEIGHTS.sum { |facet, weight| weight * maps[facet].fetch(album_id, MAX_FACET_DISTANCE) }
-      mood_distance = MoodVectors::MoodDistance.term(
+      mood_breakdown = MoodVectors::MoodDistance.breakdown(
         album_mood: album.mood_vector,
         query_mood: @understanding.mood_vector
       )
-      facet_distance + (MOOD_VECTOR_WEIGHT * mood_distance)
+      record_head_instrumentation!(mood_breakdown)
+
+      facet_distance + (MOOD_VECTOR_WEIGHT * mood_breakdown.term)
+    end
+
+    def reset_head_instrumentation!
+      @head_totals = MoodVector::MOOD_HEADS.to_h { |head| [ head, 0.0 ] }
+      @max_term = 0.0
+      @scored_count = 0
+      @head_shares = nil
+    end
+
+    def record_head_instrumentation!(breakdown)
+      MoodVector::MOOD_HEADS.each do |head|
+        @head_totals[head] += breakdown.per_head.fetch(head)
+      end
+      @max_term = [ @max_term, breakdown.term ].max
+      @scored_count += 1
+    end
+
+    def normalized_head_shares(total_weighted_sq_distance:)
+      MoodVector::MOOD_HEADS.to_h do |head|
+        share = if total_weighted_sq_distance.zero?
+          0.0
+        else
+          @head_totals.fetch(head) / total_weighted_sq_distance
+        end
+        [ head.to_s, share ]
+      end
     end
   end
 end
