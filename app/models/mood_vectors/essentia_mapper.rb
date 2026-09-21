@@ -1,7 +1,7 @@
 module MoodVectors
   class EssentiaMapper
-    # Source: sonance registry.rb default_descriptors at v0.4.0, peeled SHA
-    # 1115824c8fec533037c35aaf4ec091bb42ac63df. The registry contract is enforced at boot in
+    # Source: sonance registry.rb default_descriptors at v0.4.1, peeled SHA
+    # dc9a4aedf741aa37f6c791b2ddf9782782b5e55d. The registry contract is enforced at boot in
     # config/initializers/sonance_registry.rb and in spec/models/mood_vectors/essentia_registry_contract_spec.rb.
     DESCRIPTORS = %i[
       valence_emomusic
