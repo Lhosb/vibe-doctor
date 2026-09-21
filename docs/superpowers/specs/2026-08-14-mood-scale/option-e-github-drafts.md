@@ -1,8 +1,20 @@
 # OPTION-E — owner-facing GitHub drafts + instrumentation sizing
 
-**Author:** Keystone (Principal Engineer) · **Date:** 2026-09-20
-**Branch reviewed:** `feat/mood-scale-option-e` @ `bc6bc5d` (worktree `.worktrees/mood-scale-option-e`)
-**DRAFT ONLY — nothing posted to GitHub.**
+**Author:** Keystone (Principal Engineer) · **Date:** 2026-09-20 · **Header refreshed:** 2026-09-21
+
+**THIS WORK HAS LANDED.** Reviewed on `feat/mood-scale-option-e` @ `bc6bc5d`, which has since been
+squash-merged and is no longer a live branch. What shipped:
+
+| Work | Merged as | PR |
+| --- | --- | --- |
+| Option E step 4 — calibrated mood metric wired into recommendation scoring | `38aaa3e` | #53 |
+| `mood_head_shares` instrumentation on `RecommendationEvent` | `7bc9f7b` | #54 |
+
+Current `main` is `26a031c`. Read this file against `main`, not against a branch — `bc6bc5d` is not
+an ancestor of `main` (the branch was squash-merged), so that SHA cannot be checked out from `main`'s
+history.
+
+**The GitHub drafts below are still unposted.** See the STATUS note on each.
 
 ---
 
@@ -24,8 +36,9 @@ side only (`query_mood.public_send(head)` is used raw), so the asymmetry is as d
 summary is correct.** Two refinements worth carrying into the comment:
 
 1. **It is not a property of clamping.** Option E doubles the weight of *all* emomusic error. Clamp
-   error is one instance. The honest framing: emomusic goes from ~2.8 % of mood distance to ~10.3 %,
-   and any pre-existing damage is promoted along with the head.
+   error is one instance. The honest framing: emomusic goes from ~2.8 % of mood distance to ~10.3 %
+   (n = 1, one user's collection — see `measurement.md`; not a population fact), and any pre-existing
+   damage is promoted along with the head.
 2. **The clamp is per-track; the stored value is an album mean.** `MoodGroundingService#aggregate`
    averages ~4 tracks, so one clamped track contributes `2 · e / n_tracks`, not `2 · e`. The ×2 is
    exact at the coordinate level; the album-level magnitude is diluted. Stating it without the
@@ -42,41 +55,60 @@ emomusic extremes permit a mood term of `1.190238` against a nominal bound of 1.
 
 ## 1. DRAFT — comment for vibe-doctor issue #30
 
+> STATUS 2026-09-21 — CORRECTED AND FACT-CHECKED. NOT YET POSTED.
+> Re-verified 2026-09-21: issue #30 is open with 0 comments, so this has not been posted.
+> The body below is the CORRECTED version. Fact-checking found that the earlier draft quoted the
+> emomusic share split (~2.8% rising to ~10.3%) as a bare fact; measurement.md section "Population
+> label correction (2026-08-15)" forbids that, those being n=1 figures over 321 rows that are one
+> user's personal collection in the local development database. The provenance caveat below is that
+> correction. The x2.0 amplification was NOT affected and carries no caveat: it is exact algebra
+> from four constants (RAW_MIN 1.0, RAW_RANGE 8.0, BAND_MIN 3.0, BAND_MAX 7.0), independent of any
+> measurement. Only the share split is n=1.
+
 > Verified before drafting: #30 is **open with 0 comments**; the amplification is not mentioned anywhere on it.
 
 ```markdown
 ## Option E changes the cost of the emomusic half of this decision
 
-Option E (branch `feat/mood-scale-option-e`) has landed the scoring-time band recalibration. It does
-not change what the mapper writes, but it changes what a clamped emomusic value *costs*, so this
-decision is no longer cost-neutral on that half.
+Option E has landed the scoring-time band recalibration (now on `main`). It does not change what the
+mapper writes, but it changes what a clamped emomusic value *costs*, so this decision is no longer
+cost-neutral on that half.
 
 ### The mechanism, from the code
 
 `MoodVectors::EssentiaMapper#rescale_emomusic` stores `clamp((raw - 1.0) / 8.0)`.
 `MoodVectors::HeadCalibration.album_coordinate` then reads that stored value at scoring time and
-maps it `(stored * 8.0 + 1.0 - 3.0) / 4.0`. Composed:
+maps it `(stored * RAW_RANGE + RAW_MIN - BAND_MIN) / BAND_RANGE`, with `RAW_MIN 1.0`,
+`RAW_RANGE 8.0`, `BAND_MIN 3.0`, `BAND_MAX 7.0`. Composed:
 
-    calibrated = 2 · stored − 0.5
+    calibrated = 2 * stored - 0.5
 
-**The emomusic scale factor into recommendation space is exactly 2.0.** That applies to every
-emomusic difference — it is the point of the band correction, which lifts emomusic from ~2.8 % of
-mood distance to ~10.3 %. It also applies to error. A value this mapper clamps now carries **twice**
-the coordinate error it used to, and any damage already in an emomusic value is promoted along with
-the head.
+**The emomusic scale factor into recommendation space is exactly 2.0.** This is exact algebra from
+the four constants, not an estimate. It applies to every emomusic difference — that is the point of
+the band correction. It also applies to error. A value this mapper clamps now carries **twice** the
+coordinate error it used to, and any damage already in an emomusic value is promoted along with the
+head.
+
+> **Provenance note on the share figures.** The band correction was chosen to lift emomusic's share
+> of mood distance from ~2.8 % to ~10.3 % (and head imbalance from ~32x to ~7.9x). Those percentages
+> come from `docs/superpowers/specs/2026-08-14-mood-scale/measurement.md`, measured over 321 rows in
+> the **local dev** database. That population is **one user's personal collection, n=1** — the
+> document explicitly forbids quoting the split as a population fact. Treat the percentages as the
+> recorded rationale for the band choice, not as a measured property of the catalogue. **The 2.0
+> factor above does not depend on them.**
 
 ### Why that matters more than the factor of two suggests
 
 There is deliberately **no scoring-time clamp**. So a stored `1.0` calibrates to **+1.5** and a
-stored `0.0` to **−0.5**, while real albums occupy only **0.049 … 0.916** in that space. A saturated
-value does not merely become inaccurate — it lands outside the range any genuine album can reach.
-`candidate_retrieval.rb:4-6` records the bound this permits: a mood term of `1.190238` against a
-nominal maximum of `1.0`.
+stored `0.0` to **-0.5**, while every album in the same 321-row dev collection occupies only **0.049 ... 0.916** in that space. A
+saturated value does not merely become inaccurate — it lands outside the range any genuine album can
+reach. `candidate_retrieval.rb:4-6` records the bound this permits: a mood term of `1.190238`
+against a nominal maximum of `1.0`.
 
 Two things keep this proportionate, and they should be stated plainly:
 
 - The clamp fires **per track**; the stored column is an album mean over ~4 tracks
-  (`MoodGroundingService#aggregate`), so one clamped track moves the album value by `2 · e / n`.
+  (`MoodGroundingService#aggregate`), so one clamped track moves the album value by `2 * e / n`.
 - Worst case the gem currently admits is `sanity_range` `-3.0..13.0`. A raw `13` with one track in
   four yields a calibrated album error of `0.25` — a quarter of the head's usable range. Not fatal,
   not negligible.
@@ -101,13 +133,18 @@ their cost; it does not create the exposure, which has been live all along.
 This does not block Option E, and Option E does not block this. But sonance issue
 [#15](https://github.com/Lhosb/sonance/issues/15) ("sanity_range rejection is fatal") is waiting on
 *this* decision — its own required ordering is that the app-side work lands first. **The dependency
-runs app → gem.** Deciding here unblocks the gem; waiting for the gem inverts it and opens the
+runs app -> gem.** Deciding here unblocks the gem; waiting for the gem inverts it and opens the
 window #15 warns about, in which neither side guards the range.
 ```
 
 ---
 
 ## 2. DRAFT — new issue for the §4.1 re-embed ticket
+
+> STATUS 2026-09-21 — CORRECTED AND FACT-CHECKED. NOT YET FILED.
+> Re-verified 2026-09-21: no issue matching this title exists in Lhosb/vibe-doctor in any state.
+> The body below is the CORRECTED version; the 32-of-321 figure now carries the same provenance
+> caveat as the share split, being drawn from the same single-collection development database.
 
 **Title:**
 
@@ -123,27 +160,30 @@ Align MoodDescriptor and VibePhraseBuilder thresholds with the Option E band (re
 Apply the Option E emomusic band (`3.0..7.0`) to the **display and embedding-text** thresholds, so
 both channels that consume mood agree about what "sunny" means.
 
-Recorded in `docs/superpowers/specs/2026-08-14-mood-scale/principal-optionE.md` §4.1 as a separate,
-cost-bearing follow-on. It is filed now so the cost is never discovered mid-implementation.
+Recorded in `docs/superpowers/specs/2026-08-14-mood-scale/principal-optionE.md` section 4.1 as a
+separate, cost-bearing follow-on. It is filed now so the cost is never discovered mid-implementation.
 
 ## Why
 
 Option E recalibrated mood **only in the Euclidean channel**, at scoring time. Mood reaches the
 blended score through a second channel that was deliberately left alone:
 
-`MoodDescriptor.render` (`mood_descriptor.rb:10-13, 18-19, 23-24`) →
-`AlbumEmbeddingService#emotional_text` (`album_embedding_service.rb:41-45`) → the `emotional` facet
-(`candidate_retrieval.rb:3`, weight `0.15`).
+`MoodDescriptor.render` (`app/services/mood_descriptor.rb:10-13, 18-19, 23-24`) ->
+`AlbumEmbeddingService#emotional_text` (`app/services/album_embedding_service.rb:41-48`) -> the
+`emotional` facet (`candidate_retrieval.rb:3`, weight `0.15`).
 
-That channel still applies **absolute 0.6/0.4 thresholds to compressed stored values**. Measured
-over the 321-row fixture, a valence phrase fires on **32 of 321 albums (10 %)**. So the two channels
-disagree for albums in roughly the 60th–95th percentile of the compressed heads: the Euclidean
+That channel still applies **absolute 0.6/0.4 thresholds to compressed stored values**. Measured over
+the 321-row dev fixture, a valence phrase fires on **32 of 321 albums (10%)**. So the two channels
+disagree for albums in roughly the 60th-95th percentile of the compressed heads: the Euclidean
 channel now treats such an album as clearly sunny, while the embedding text says nothing about
 valence at all.
 
-`MoodVectors::VibePhraseBuilder` has the same shape (`NEUTRAL 0.5`, `DISTINCTIVE_THRESHOLD 0.1`,
-high/low split at `0.6`), so the two most human-legible adjectives — somber/sunny and
-hushed/driving — are effectively disabled for most of the catalogue.
+> Provenance caveat: those 321 rows are one user's personal collection in the local dev database, not
+> a catalogue sample. Treat the 10% as an order-of-magnitude indication, not a population statistic.
+
+`MoodVectors::VibePhraseBuilder` has the same shape (`NEUTRAL = 0.5`, `DISTINCTIVE_THRESHOLD = 0.1`,
+high/low split at `0.6`), so the two most human-legible adjectives — somber/sunny and hushed/driving
+— are effectively disabled for most of the catalogue.
 
 **This is pre-existing, not a regression from Option E.** Option E did not widen the gap; it left it
 where it was, deliberately, because closing it is not free.
@@ -153,7 +193,7 @@ where it was, deliberately, because closing it is not free.
 Changing `MoodDescriptor`'s thresholds changes `emotional_text`, which changes the **emotional facet
 embedding for every album**. That means:
 
-- A **full-catalogue re-embed**: ~321 albums × 4 facet embeddings via `text-embedding-3-small`.
+- A **full-catalogue re-embed**: ~321 albums x 4 facet embeddings via `text-embedding-3-small`.
 - One complete enrichment pass.
 - **Every album's emotional facet moves at once**, so recommendation output shifts catalogue-wide in
   a single step — with no per-album way to stage or A/B it.
@@ -173,25 +213,31 @@ Monetary cost is small; the *risk* is that it is an all-at-once change to a live
 
 ## Explicitly out of scope
 
-Moving the band into `MoodVectors::EssentiaMapper`. Option E §4.2 refuses that: it would require a
-migration, a backfill, this re-embed, a redefinition of every display threshold, and a silent break
-in already-stored `VibeOverride` rows. **The band stays at scoring time.**
+Moving the band into `MoodVectors::EssentiaMapper`. Option E section 4.2 refuses that: it would
+require a migration, a backfill, this re-embed, a redefinition of every display threshold, and a
+silent break in already-stored `VibeOverride` rows. **The band stays at scoring time.**
 
 ## Not urgent
 
 The emotional facet is `0.15` of `FACET_WEIGHTS`, and `MoodDescriptor` output is only part of
-`emotional_text`, so the magnitude is bounded. The measured defect that motivated the mood-scale
-work lives in the Euclidean channel, which Option E has fixed.
+`emotional_text`, so the magnitude is bounded. The measured defect that motivated the mood-scale work
+lives in the Euclidean channel, which Option E has fixed.
 
 ## Provenance
 
-`docs/superpowers/specs/2026-08-14-mood-scale/principal-optionE.md` §4, §4.1, §4.2, on branch
-`feat/mood-scale-option-e`.
+`docs/superpowers/specs/2026-08-14-mood-scale/principal-optionE.md` sections 4, 4.1, 4.2. That work
+has since merged; current `main` is `26a031c`.
 ```
 
 ---
 
 ## 3. The `mood_head_shares` instrumentation — size, and can it follow?
+
+> **STATUS 2026-09-21 — NOT A DRAFT. THIS RECOMMENDATION WAS ACTED ON AND HAS LANDED.**
+> This section is sizing analysis, not a GitHub draft, and nothing here is awaiting posting. Its
+> conclusion — that the instrumentation should follow Option E rather than ship with it — was
+> followed: it merged separately as `7bc9f7b` (PR #54), after Option E step 4 merged as `38aaa3e`
+> (PR #53). Retained as a record of the sizing and the sequencing argument.
 
 **It can and should follow. It is roughly a half-day, and the arithmetic is the least of it.**
 
@@ -221,7 +267,8 @@ arrives. **Next thing after Option E merges, not part of it.**
 
 ## Evidence
 
-Read on `feat/mood-scale-option-e` @ `bc6bc5d`: `head_calibration.rb`, `head_weights.rb`,
+Read on `feat/mood-scale-option-e` @ `bc6bc5d` (since squash-merged; equivalent to `38aaa3e` on
+`main`): `head_calibration.rb`, `head_weights.rb`,
 `mood_distance.rb`, `candidate_retrieval.rb`, `essentia_mapper.rb`, `mood_grounding_service.rb`,
 `mood_descriptor.rb`, `album_embedding_service.rb`, `vibe_phrase_builder.rb`, `pipeline.rb`,
 `db/schema.rb`, and `principal-optionE.md` §4/§4.1/§4.2/§6. Re-derived `calibrated = 2·stored − 0.5`
