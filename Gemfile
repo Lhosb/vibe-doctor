@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 8.1.3"
+gem "rails", "~> 8.1.4", ">= 8.1.4.1"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
 # Use postgresql as the database for Active Record
@@ -31,6 +31,7 @@ gem "solid_queue"
 gem "solid_cable"
 gem "neighbor"
 gem "faraday"
+gem "sonance", git: "https://github.com/Lhosb/sonance.git", tag: "v0.4.1"
 
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
@@ -41,9 +42,7 @@ gem "kamal", require: false
 # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
 gem "thruster", require: false
 
-# Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
-gem "image_processing", "~> 1.2"
-gem "openai", "~> 0.71.0"
+gem "openai", "~> 0.95.0"
 
 group :development, :test do
   # Loads environment variables from .env into ENV on boot
@@ -69,7 +68,7 @@ group :test do
   gem "webmock"
   # Drives headless Chrome for js: true system specs (Turbo Stream/fetch-driven flows
   # that rack_test cannot execute).
-  gem "selenium-webdriver", "~> 4.11"
+  gem "selenium-webdriver", "~> 4.49"
 end
 
 group :development do
@@ -77,4 +76,4 @@ group :development do
   gem "web-console"
 end
 
-gem "madmin", "~> 2.3"
+gem "madmin", "~> 2.6"

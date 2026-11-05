@@ -23,6 +23,11 @@ RSpec.describe MoodVector, type: :model do
     expect(mood_vector.errors[:valence]).to be_present
   end
 
+  it "does not expose the legacy symmetric metric API (G5)", :aggregate_failures do
+    expect(described_class.const_defined?(:MAX_DISTANCE, false)).to be(false)
+    expect(described_class.method_defined?(:distance_to)).to be(false)
+  end
+
   it "delegates vibe_phrase to MoodVectors::VibePhraseBuilder" do
     mood_vector = MoodVector.new(album: album, valence: 0.2, arousal: 0.35, mood_happy: 0.1)
     expect(mood_vector.vibe_phrase(genre: "Jazz")).to eq("brooding somber — Jazz")

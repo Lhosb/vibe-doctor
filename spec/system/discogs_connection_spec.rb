@@ -49,4 +49,24 @@ RSpec.describe "Discogs connection", type: :system do
     expect(page).to have_content("Album One")
     expect(CollectionItem.where(user: user).count).to eq(1)
   end
+
+  it "shows a Sync now button once connected, and re-triggers the sync" do
+    user.update!(discogs_username: "listener", discogs_token: "test-token-abc")
+
+    visit new_session_path
+    fill_in "Enter your email address", with: user.email_address
+    fill_in "Enter your password", with: "s3cret-pass"
+    click_button "Sign in"
+
+    visit edit_discogs_connection_path
+
+    expect(page).to have_button("Sync now")
+
+    perform_enqueued_jobs do
+      click_button "Sync now"
+    end
+
+    expect(page).to have_content("Discogs sync started.")
+    expect(CollectionItem.where(user: user).count).to eq(1)
+  end
 end

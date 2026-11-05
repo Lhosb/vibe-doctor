@@ -1,10 +1,15 @@
 require "securerandom"
 
 class MoodGroundingService
+  class SystematicTrackFailure < Sonance::FatalError; end
+  TrackOmission = Data.define(:error, :track_number)
+
   def initialize(
     itunes_matcher: ItunesPreviewMatcher.new,
     youtube_matcher: YoutubeClipMatcher.new,
-    feature_extractor: EssentiaFeatureExtractor.new(models_dir: ENV.fetch("ESSENTIA_MODELS_DIR", Rails.root.join("tmp", "essentia_models"))),
+    feature_extractor: Sonance::Extractor.new(
+      models_dir: ENV.fetch("ESSENTIA_MODELS_DIR", Rails.root.join("tmp", "essentia_models"))
+    ),
     grounding_tracks_per_album: ENV.fetch("GROUNDING_TRACKS_PER_ALBUM", "4").to_i,
     youtube_match_confidence_threshold: ENV.fetch("YOUTUBE_MATCH_CONFIDENCE_THRESHOLD", "0.72").to_f,
     enable_youtube_grounding: ActiveModel::Type::Boolean.new.cast(ENV.fetch("ENABLE_YOUTUBE_GROUNDING", "true"))
@@ -26,7 +31,14 @@ class MoodGroundingService
       on_matched&.call
     end
 
-    ground_via_itunes(album, guarded_callback) || ground_via_youtube(album, guarded_callback) || default_attrs
+    itunes_attrs, itunes_failure = ground_via_itunes(album, guarded_callback)
+    return itunes_attrs if itunes_attrs
+
+    youtube_attrs, youtube_failure = ground_via_youtube(album, guarded_callback)
+    return youtube_attrs if youtube_attrs
+
+    raise_systematic_track_failure!(itunes_failure, youtube_failure)
+    default_attrs
   end
 
   private
@@ -37,57 +49,131 @@ class MoodGroundingService
 
   def ground_via_itunes(album, on_matched)
     previews = @itunes_matcher.find_previews(title: album.title, artists: album.artists, max_tracks: @grounding_tracks_per_album)
-    return nil if previews.empty?
+    return [ nil, nil ] if previews.empty?
 
     on_matched.call
 
-    track_coords = previews.filter_map { |preview| analyze_remote_track(preview.preview_url) }
-    return nil if track_coords.empty?
+    track_omissions = []
+    track_coords = previews.each_with_index.filter_map do |preview, index|
+      analyze_remote_track(preview.preview_url, track_omissions:, track_number: index + 1)
+    end
+    log_track_omissions(
+      album:, source: "iTunes", track_omissions:,
+      attempted_count: previews.size, contributing_count: track_coords.size
+    )
+    failure = systematic_track_failure(track_coords, track_omissions, previews.size, source: "iTunes")
+    return [ nil, failure ] if track_coords.empty?
 
-    aggregate(track_coords).merge(mood_source: "essentia_itunes", match_confidence: previews.first.match_confidence)
+    [
+      aggregate(track_coords, album:, source: "iTunes", attempted_count: previews.size)
+        .merge(mood_source: "essentia_itunes", match_confidence: previews.first.match_confidence),
+      nil
+    ]
   end
 
   def ground_via_youtube(album, on_matched)
-    return nil unless @enable_youtube_grounding
+    return [ nil, nil ] unless @enable_youtube_grounding
 
     clip_paths = @youtube_matcher.find_clips(
       title: album.title, artists: album.artists,
       confidence_threshold: @youtube_match_confidence_threshold, max_clips: @grounding_tracks_per_album
     )
-    return nil if clip_paths.compact.empty?
+    return [ nil, nil ] if clip_paths.compact.empty?
 
     on_matched.call
 
-    track_coords = clip_paths.compact.filter_map { |clip_path| analyze_local_track(clip_path) }
-    return nil if track_coords.empty?
+    paths = clip_paths.compact
+    begin
+      track_omissions = []
+      track_coords = paths.each_with_index.filter_map do |clip_path, index|
+        analyze_local_track(clip_path, track_omissions:, track_number: index + 1)
+      end
+      log_track_omissions(
+        album:, source: "YouTube", track_omissions:,
+        attempted_count: paths.size, contributing_count: track_coords.size
+      )
+      failure = systematic_track_failure(track_coords, track_omissions, paths.size, source: "YouTube")
+      return [ nil, failure ] if track_coords.empty?
 
-    aggregate(track_coords).merge(mood_source: "essentia_youtube", match_confidence: 1.0)
+      [
+        aggregate(track_coords, album:, source: "YouTube", attempted_count: paths.size)
+          .merge(mood_source: "essentia_youtube", match_confidence: 1.0),
+        nil
+      ]
+    ensure
+      paths.each { |path| File.delete(path) if File.exist?(path) }
+    end
   end
 
-  def analyze_remote_track(preview_url)
+  def analyze_remote_track(preview_url, track_omissions:, track_number:)
     dest_path = Rails.root.join("tmp", "vibe_doctor_itunes_#{SecureRandom.hex}.audio")
     response = Faraday.get(preview_url) { |request| request.options.timeout = 15 }
     raise Faraday::Error, "download failed: #{response.status}" unless response.success?
 
     dest_path.binwrite(response.body)
-    @feature_extractor.analyze(dest_path)
-  rescue EssentiaFeatureExtractor::Error, Faraday::Error => e
-    Rails.logger.warn("iTunes-sourced track analysis failed for '#{preview_url}': #{e.message}")
+    analysis = @feature_extractor.analyze(dest_path, descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
+    MoodVectors::EssentiaMapper.new.call(analysis.to_h.transform_values(&:value))
+  rescue Sonance::TrackError => e
+    track_omissions << TrackOmission.new(error: e, track_number:)
+    nil
+  rescue Faraday::Error => e
+    track_omissions << TrackOmission.new(error: e, track_number:)
     nil
   ensure
     File.delete(dest_path) if File.exist?(dest_path)
   end
 
-  def analyze_local_track(clip_path)
-    @feature_extractor.analyze(clip_path)
-  rescue EssentiaFeatureExtractor::Error => e
-    Rails.logger.warn("YouTube-sourced track analysis failed for '#{clip_path}': #{e.message}")
+  def analyze_local_track(clip_path, track_omissions:, track_number:)
+    analysis = @feature_extractor.analyze(clip_path, descriptors: MoodVectors::EssentiaMapper::DESCRIPTORS)
+    MoodVectors::EssentiaMapper.new.call(analysis.to_h.transform_values(&:value))
+  rescue Sonance::TrackError => e
+    track_omissions << TrackOmission.new(error: e, track_number:)
     nil
   ensure
     File.delete(clip_path) if File.exist?(clip_path)
   end
 
-  def aggregate(track_coords)
+  def systematic_track_failure(track_coords, track_omissions, track_count, source:)
+    track_errors = track_omissions.map(&:error)
+    faraday_failures = track_errors.count { |error| error.is_a?(Faraday::Error) }
+    analyzable = track_count - faraday_failures
+    probe_errors = track_errors.reject { |error| error.is_a?(Faraday::Error) }
+    # A single analyzable failure is trivially uniform, so it cannot justify aborting the catalogue.
+    return unless analyzable > 1 && track_coords.empty? && probe_errors.size == analyzable
+
+    error_classes = probe_errors.map(&:class).uniq
+    # Requiring one class deliberately favors false negatives over escalating unrelated per-track faults.
+    return unless error_classes.one?
+
+    error_class = error_classes.first
+    # Download failures stay recorded for diagnostics but provide no extractor evidence; the run-level
+    # llm_only guard catches download-scale outages across albums regardless of error class.
+    "#{analyzable} #{source} tracks failed with #{error_class}"
+  end
+
+  def raise_systematic_track_failure!(itunes_failure, youtube_failure)
+    return unless itunes_failure && youtube_failure
+
+    # The sources need not share a class; two independent uniform failures are still systematic evidence.
+    raise SystematicTrackFailure, "#{itunes_failure}; #{youtube_failure}"
+  end
+
+  def log_track_omissions(album:, source:, track_omissions:, attempted_count:, contributing_count:)
+    track_omissions.each do |omission|
+      error = omission.error
+      Rails.logger.error(
+        "Mood grounding omitted track: album_id=#{album.id} album_title=#{album.title.inspect} " \
+        "source=#{source} track_number=#{omission.track_number} error=#{error.class} " \
+        "attempted=#{attempted_count} contributing=#{contributing_count} message=#{error.message.inspect}"
+      )
+    end
+  end
+
+  def aggregate(track_coords, album:, source:, attempted_count:)
+    Rails.logger.info(
+      "Mood grounding aggregate: album_id=#{album.id} album_title=#{album.title.inspect} " \
+      "source=#{source} attempted=#{attempted_count} contributing=#{track_coords.size}"
+    )
     means = {}
     spreads = {}
     MoodVector::MOOD_HEADS.each do |head|

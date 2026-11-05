@@ -54,3 +54,17 @@ These instructions define how code should be written in this Rails app.
 - Make minimal, focused changes that align with existing patterns.
 - Do not introduce new architecture patterns unless there is a clear, local need.
 - If introducing a boundary, document why it is needed in code comments or PR notes.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in this repository's GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage uses the default canonical labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Domain docs use a single-context layout (root `CONTEXT.md` plus `docs/adr/`). See `docs/agents/domain.md`.

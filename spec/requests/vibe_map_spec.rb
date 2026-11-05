@@ -64,3 +64,32 @@ RSpec.describe "GET /vibe_map", type: :request do
     expect(dot["mood_happy"]).to eq(0.8)
   end
 end
+
+RSpec.describe "GET /vibe_map/global", type: :request do
+  def dots_from(response_body)
+    html = Nokogiri::HTML5.parse(response_body)
+    json = html.at_css("[data-library-vibe-map-dots-value]")["data-library-vibe-map-dots-value"]
+    JSON.parse(json)
+  end
+
+  it "forbids access to a non-admin user" do
+    sign_in_as(create(:user, admin: false))
+
+    get "/vibe_map/global"
+
+    expect(response).to have_http_status(:forbidden)
+  end
+
+  it "shows grounded albums across all users' collections to an admin" do
+    sign_in_as(create(:user, admin: true))
+    other_user = create(:user)
+    grounded = create(:album, :grounded)
+    create(:mood_vector, album: grounded)
+    CollectionItem.create!(user: other_user, album: grounded, release_id: 1)
+
+    get "/vibe_map/global"
+
+    expect(response).to have_http_status(:ok)
+    expect(dots_from(response.body).map { |d| d["id"] }).to include(grounded.id)
+  end
+end

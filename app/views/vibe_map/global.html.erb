@@ -1,0 +1,20 @@
+<h1 class="text-2xl font-bold mb-4">Vibe Map</h1>
+
+<div class="max-w-3xl flex gap-2">
+  <div class="flex flex-col justify-between text-xs font-medium text-gray-400 uppercase tracking-wide shrink-0 py-1">
+    <span>Energetic</span>
+    <span>Calm</span>
+  </div>
+  <div class="flex-1">
+    <div
+      data-controller="library-vibe-map"
+      data-library-vibe-map-target="map"
+      data-library-vibe-map-dots-value="<%= @dots_json %>"
+      class="vibe-map-canvas relative w-full aspect-square border border-gray-300 rounded-lg bg-gray-50"
+    ></div>
+    <div class="flex justify-between text-xs font-medium text-gray-400 uppercase tracking-wide mt-1">
+      <span>Sad</span>
+      <span>Happy</span>
+    </div>
+  </div>
+</div>

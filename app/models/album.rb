@@ -9,7 +9,7 @@ class Album < ApplicationRecord
     "matching_audio" => %w[extracting_features failed],
     "extracting_features" => %w[grounded failed],
     "grounded" => [],
-    "failed" => %w[grounded]
+    "failed" => %w[matching_audio grounded]
   }.freeze
 
   has_one :mood_vector, dependent: :destroy
@@ -40,6 +40,13 @@ class Album < ApplicationRecord
 
   def fail_enrichment!
     transition_to!("failed")
+  end
+
+  # Bypasses ENRICHMENT_TRANSITIONS on purpose: forces a "grounded" album back through
+  # enrichment, for cases where grounding previously succeeded via the llm_only fallback
+  # without ever actually running essentia.
+  def reset_enrichment!
+    update!(enrichment_status: "pending")
   end
 
   def repair_youtube_link!(url)

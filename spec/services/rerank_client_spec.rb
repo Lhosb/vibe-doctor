@@ -5,8 +5,8 @@ RSpec.describe RerankClient do
   let(:album_b) { create(:album, :grounded, title: "B", artists: [ "Artist B" ], genres: [ "Jazz" ]) }
   let(:ranked_candidates) do
     [
-      RankedCandidate::Ranked.new(album: album_a, blended_score: 0.2, affinity: 0.0, cooldown_penalty: 0.0, final_score: 0.8),
-      RankedCandidate::Ranked.new(album: album_b, blended_score: 0.3, affinity: 0.0, cooldown_penalty: 0.0, final_score: 0.7)
+      Recommendations::RankedCandidate::Ranked.new(album: album_a, blended_score: 0.2, affinity: 0.0, cooldown_penalty: 0.0, final_score: 0.8),
+      Recommendations::RankedCandidate::Ranked.new(album: album_b, blended_score: 0.3, affinity: 0.0, cooldown_penalty: 0.0, final_score: 0.7)
     ]
   end
   let(:client) { double("OpenAI::Client") } # rubocop:disable RSpec/VerifiedDoubles

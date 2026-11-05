@@ -16,4 +16,12 @@ RSpec.describe "Madmin admin panel", type: :request do
 
     expect(response).to have_http_status(:ok)
   end
+
+  it "forbids access via a bearer token, even for an admin user" do
+    admin = create(:user, admin: true)
+
+    get "/admin", headers: { "Authorization" => "Bearer #{admin.api_token}" }
+
+    expect(response).to have_http_status(:forbidden)
+  end
 end

@@ -31,6 +31,8 @@ RSpec.describe "POST /recommend", type: :request do
   end
 
   before do
+    CollectionItem.create!(user: user, album: album, release_id: album.master_id)
+
     create(
       :mood_vector, album: album,
       valence: 0.6, arousal: 0.3, danceability: 0.4, mood_acoustic: 0.7, mood_relaxed: 0.65, mood_happy: 0.55
@@ -72,6 +74,15 @@ RSpec.describe "POST /recommend", type: :request do
       candidates_considered: 1,
       explanation: "warm and mellow"
     )
+  end
+
+  it "returns 422 when the current user has no albums in their collection" do
+    user.collection_items.delete_all
+
+    post "/recommend", params: { query: "warm sunday jazz" }
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.parsed_body["error"]).to be_present
   end
 
   it "returns 422 when no albums are admitted" do

@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -29,7 +29,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -45,7 +45,7 @@ jobs:
       RUBOCOP_CACHE_ROOT: tmp/rubocop
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -65,3 +65,60 @@ jobs:
       - name: Lint code for consistent style
         run: bin/rubocop -f github
 
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_DB: vibe_doctor_test
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/vibe_doctor_test
+      RAILS_ENV: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Precompile test assets
+        run: bin/rails assets:precompile
+
+      - name: Prepare test database
+        run: bin/rails db:test:prepare
+
+      - name: Run test suite
+        run: bundle exec rspec
+
+  essentia:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Lint Essentia CI script
+        run: shellcheck bin/essentia-ci
+
+      - name: Build Essentia test image
+        run: docker build --platform linux/amd64 -t vibe-doctor-essentia-goldens .
+
+      - name: Run Essentia golden specs
+        run: |
+          # This job intentionally has no database. Essentia specs must stay Rails-free;
+          # add a database-backed job instead if a future Essentia gate requires rails_helper.
+          docker run --rm --platform linux/amd64 --entrypoint bash \
+            -e ESSENTIA_SPECS=1 -e RAILS_ENV=test \
+            vibe-doctor-essentia-goldens \
+            /rails/bin/essentia-ci

@@ -11,7 +11,7 @@ module Madmin
     end
 
     def require_admin!
-      head :forbidden unless current_user&.admin?
+      head :forbidden unless current_user&.admin? && Current.session&.persisted?
     end
   end
 end

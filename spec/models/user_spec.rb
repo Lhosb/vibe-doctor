@@ -36,4 +36,19 @@ RSpec.describe User, type: :model do
   it "defaults admin to false" do
     expect(create(:user).admin).to eq(false)
   end
+
+  it "auto-generates an api_token on create" do
+    user = create(:user)
+    expect(user.api_token).to be_present
+  end
+
+  it "regenerates the api_token, invalidating the old value" do
+    user = create(:user)
+    old_token = user.api_token
+
+    user.regenerate_api_token!
+
+    expect(user.api_token).to be_present
+    expect(user.api_token).not_to eq(old_token)
+  end
 end
