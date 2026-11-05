@@ -38,5 +38,8 @@ module VibeDoctor
 
     # Don't generate system test files.
     config.generators.system_tests = nil
+
+    # No attachments use image variants, so image_processing/ruby-vips aren't bundled.
+    config.active_storage.variant_processor = :disabled
   end
 end
