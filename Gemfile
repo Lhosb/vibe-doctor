@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 8.1.4"
+gem "rails", "~> 8.1.4", ">= 8.1.4.1"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
 # Use postgresql as the database for Active Record
@@ -70,7 +70,7 @@ group :test do
   gem "webmock"
   # Drives headless Chrome for js: true system specs (Turbo Stream/fetch-driven flows
   # that rack_test cannot execute).
-  gem "selenium-webdriver", "~> 4.47"
+  gem "selenium-webdriver", "~> 4.49"
 end
 
 group :development do
@@ -78,4 +78,4 @@ group :development do
   gem "web-console"
 end
 
-gem "madmin", "~> 2.4"
+gem "madmin", "~> 2.6"
