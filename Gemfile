@@ -42,7 +42,7 @@ gem "kamal", require: false
 # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
 gem "thruster", require: false
 
-gem "openai", "~> 0.95.0"
+gem "openai", "~> 0.115.0"
 
 group :development, :test do
   # Loads environment variables from .env into ENV on boot
