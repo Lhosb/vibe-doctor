@@ -76,4 +76,4 @@ group :development do
   gem "web-console"
 end
 
-gem "madmin", "~> 2.6"
+gem "madmin", "~> 3.4"
